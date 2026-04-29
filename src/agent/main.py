@@ -374,6 +374,37 @@ async def save_llm_config(ollama_url: str = Form(""), ollama_model: str = Form("
         
     return HTMLResponse("<div class='text-green-500 font-bold mt-2 text-sm'>✓ LLM Settings saved successfully.</div>")
 
+@app.post("/api/config/llm/verify", response_class=HTMLResponse)
+async def verify_llm_config(ollama_url: str = Form("")):
+    import requests
+    if not ollama_url:
+        return HTMLResponse("<div class='text-red-500 text-sm mt-2'>URL is required.</div>")
+        
+    try:
+        url = ollama_url.rstrip("/")
+        resp = requests.get(f"{url}/api/tags", timeout=5)
+        if resp.status_code == 200:
+            data = resp.json()
+            models = data.get("models", [])
+            
+            if not models:
+                return HTMLResponse(
+                    "<div class='text-amber-500 text-sm mb-2'>Connected, but no models found. You may need to pull a model first.</div>"
+                    "<label class='block text-sm text-slate-400 mb-1'>Default Model Name</label>"
+                    "<input type='text' name='ollama_model' class='w-full bg-slate-800 border border-slate-600 text-white rounded px-3 py-2'>"
+                )
+                
+            options = "".join([f"<option value='{m.get('name')}'>{m.get('name')}</option>" for m in models])
+            return HTMLResponse(
+                f"<div class='text-green-500 text-sm font-bold mb-2'>✓ Connected successfully! Found {len(models)} models.</div>"
+                f"<label class='block text-sm text-slate-400 mb-1'>Default Model Name</label>"
+                f"<select name='ollama_model' class='w-full bg-slate-800 border border-slate-600 text-white rounded px-3 py-2'>{options}</select>"
+            )
+        else:
+            return HTMLResponse(f"<div class='text-red-500 text-sm mt-2'>Error: Received status code {resp.status_code}</div>")
+    except Exception as e:
+        return HTMLResponse(f"<div class='text-red-500 text-sm mt-2'>Connection failed: {str(e)}</div>")
+
 @app.post("/api/test_ssh", response_class=HTMLResponse)
 async def test_ssh(ip: str = Form(...), auth_method: str = Form(...), username: str = Form(""), password: str = Form(""), key_file: str = Form("")):
     try:

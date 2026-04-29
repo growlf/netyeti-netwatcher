@@ -53,12 +53,23 @@
                     {% endif %}
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="grid grid-cols-1 gap-6">
                     <div>
                         <label class="block text-sm text-slate-400 mb-1">Ollama Base URL</label>
-                        <input type="text" name="ollama_url" value="{{ settings.get('ollama_url', 'http://host.docker.internal:11434') }}" class="w-full bg-slate-800 border border-slate-600 text-white rounded px-3 py-2 placeholder-slate-500" placeholder="http://192.168.1.50:11434">
+                        <div class="flex gap-2">
+                            <input type="url" name="ollama_url" id="ollama_url" list="detected_ollamas_list" value="{{ settings.get('ollama_url', 'http://127.0.0.1:11434') }}" class="flex-1 bg-slate-800 border border-slate-600 text-white rounded px-3 py-2 placeholder-slate-500" placeholder="http://127.0.0.1:11434">
+                            <datalist id="detected_ollamas_list">
+                                {% for ip in detected_ollamas %}
+                                <option value="http://{{ ip }}:11434"></option>
+                                {% endfor %}
+                            </datalist>
+                            <button type="button" hx-post="/api/config/llm/verify" hx-include="#ollama_url" hx-target="#model_selector_container" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded text-sm text-white font-medium shadow transition-colors flex items-center gap-2">
+                                Verify & Load Models
+                            </button>
+                        </div>
                     </div>
-                    <div>
+                    <div id="model_selector_container">
+                        <!-- Model selector populated by HTMX -->
                         <label class="block text-sm text-slate-400 mb-1">Default Model Name</label>
                         <input type="text" name="ollama_model" value="{{ settings.get('ollama_model', 'llama3') }}" class="w-full bg-slate-800 border border-slate-600 text-white rounded px-3 py-2 placeholder-slate-500" placeholder="llama3 or mistral">
                     </div>
