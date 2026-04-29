@@ -1,8 +1,6 @@
-version: '3.8'
-
 services:
   victoria:
-    image: victoriametrics/victoria-metrics:latest
+    image: victoriametrics/victoria-metrics:v1.101.0
     container_name: netwatch_victoria
     ports:
       - "${VICTORIA_PORT:-8428}:8428"
@@ -15,7 +13,7 @@ services:
       - "--promscrape.config=/prometheus.yml"
 
   chroma:
-    image: chromadb/chroma:latest
+    image: chromadb/chroma:0.5.23
     container_name: netwatch_chroma
     ports:
       - "${CHROMA_PORT:-8000}:8000"
@@ -24,7 +22,7 @@ services:
     restart: unless-stopped
 
   kuzu_explorer:
-    image: kuzudb/explorer:latest
+    image: kuzudb/explorer:0.8.2
     container_name: netwatch_kuzu_explorer
     ports:
       - "8001:8000"
@@ -35,12 +33,15 @@ services:
       - KUZU_FILE=netwatch.kuzu
     user: "0:0"
     restart: unless-stopped
+
   agent:
     build:
       context: .
       dockerfile: src/agent/Dockerfile
     container_name: netwatch_agent
     network_mode: host
+    ports:
+      - "${AGENT_PORT:-8085}:8085"
     volumes:
       - ./config:/app/config
       - ./kuzu-data:/data

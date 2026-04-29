@@ -22,6 +22,7 @@ ENV/
 /config/host_vars/*
 !/config/host_vars/.gitkeep
 /collected_facts/
+collected_facts/
 *.retry
 
 # IDEs and OS files
@@ -33,4 +34,15 @@ Thumbs.db
 # Documentation tasks
 /docs/task.md
 /task.md
+
+# Python build / packaging artefacts
+*.egg-info/
+dist/
+build/
+
+# Test & coverage artefacts
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
 

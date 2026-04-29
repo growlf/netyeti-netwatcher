@@ -1,5 +1,12 @@
+import sys
+import os
+
 import pytest
-from main import parse_routeros_print
+
+# Ensure the agent source directory is on the path when running tests outside Docker
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "src", "agent"))
+
+from parsers import parse_routeros_print  # noqa: E402
 
 def test_parse_routeros_print_empty():
     raw_output = "Flags: X - disabled, I - invalid, D - dynamic\n"
