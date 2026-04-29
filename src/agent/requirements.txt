@@ -14,4 +14,4 @@ paramiko==3.5.0
 routeros-api==0.17.0
 python-multipart==0.0.22
 proxmoxer==2.0.1
-requests==2.32.3
+requests==2.33.1
