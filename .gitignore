@@ -29,3 +29,8 @@ ENV/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Documentation tasks
+/docs/task.md
+/task.md
+

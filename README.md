@@ -4,12 +4,32 @@
 
 ## Overview
 
+> [!WARNING]
+> **Project Status: Prototype / Rapid Development**
+> NetWatch AI is currently in active prototype development. Features, data structures, and the user interface are changing rapidly. 
+
+### Current Hardware Support
+Currently, NetWatch AI only supports direct API/SSH polling for devices we have implemented so far:
+- **MikroTik RouterOS** (v6 and v7 via SSH/API)
+- **Proxmox VE** (via Proxmoxer API)
+- **Technitium DNS**
+
+### Planned Features
+We are actively building out the following features:
+- **Local and Remote LLM Support**: Query your network topology using natural language (LlamaIndex).
+- **Interactive Network Mapping**: Visual graphs to explore nodes and links.
+- **Alerting & Charting**: Grafana integrations and alerting for anomalies.
+- **Enhanced Telemetry**: Expanding support to ubiquiti, cisco, and more.
+
+> [!TIP]
+> **Have a device you want supported?** 
+> Please open an Issue and submit a feature request on GitHub! We will prioritize hardware based on community requests.
+
 The system is built on a 100% local, self-hosted architecture consisting of:
 - **Kuzu**: An embeddable Graph Database for mapping devices, interfaces, and network topology.
 - **VictoriaMetrics**: A time-series database for monitoring latency, bandwidth, and health metrics.
 - **Chroma**: A vector database for storing semantic summaries and events.
-- **Telemetry Agents**: Currently using Ansible (`get_facts.yml`) for host node and interface discovery.
-- **Data Loaders**: Python agents (`kuzu_loader.py`) for ingesting facts into the graph database.
+- **Telemetry Agents**: Python agents and Ansible (`get_facts.yml`) for host node and interface discovery.
 
 For a detailed breakdown of the architecture, goals, and project phases, please refer to the comprehensive project plan:
 👉 **[docs/netwatch_ai_project_plan.html](docs/netwatch_ai_project_plan.html)**
