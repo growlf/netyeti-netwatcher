@@ -429,6 +429,7 @@ async def device_dashboard(request: Request, ip: str):
 
     dhcp_leases = []
     dns_cache = []
+    interfaces = []
     error = None
     
     try:
@@ -451,6 +452,11 @@ async def device_dashboard(request: Request, ip: str):
         except Exception as e:
             print(f"Error fetching DNS: {e}")
             
+        try:
+            interfaces = api.get_resource('/interface').get()
+        except Exception as e:
+            print(f"Error fetching Interfaces: {e}")
+            
         connection.disconnect()
     except Exception as e:
         error = str(e)
@@ -463,8 +469,9 @@ async def device_dashboard(request: Request, ip: str):
             "ip": ip,
             "dhcp_leases": dhcp_leases,
             "dns_cache": dns_cache,
-            "error": error,
-            "delegated_dns_servers": delegated_dns_servers
+            "delegated_dns_servers": delegated_dns_servers,
+            "interfaces": interfaces,
+            "error": error
         }
     )
 

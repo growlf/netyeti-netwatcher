@@ -51,33 +51,63 @@
                     </span>
                 </div>
             </div>
-            <button onclick="window.location.reload()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded text-sm transition-colors border border-slate-600 shadow">
-                Refresh Data
-            </button>
+            <div class="flex gap-2">
+                <a href="http://{{ ip }}" target="_blank" class="px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded text-sm transition-colors border border-sky-500 shadow flex items-center gap-2">
+                    Open WebFig
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                </a>
+                <button onclick="window.location.reload()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded text-sm transition-colors border border-slate-600 shadow">
+                    Refresh Data
+                </button>
+            </div>
         </header>
 
         <div class="grid grid-cols-1 gap-8">
-            {% if delegated_dns_servers %}
-            <div class="glass-panel p-6 shadow-xl border border-indigo-500/30 bg-indigo-900/10">
-                <div class="flex items-start gap-4">
-                    <div class="p-3 bg-indigo-900/50 rounded-lg text-indigo-400">
-                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                    </div>
-                    <div>
-                        <h3 class="text-xl font-bold text-indigo-300 mb-1">Delegated Services Detected</h3>
-                        <p class="text-slate-400 text-sm mb-4">We discovered dedicated DNS/DHCP servers (like Technitium) on this subnet. RouterOS DHCP/DNS tables may be empty or disabled.</p>
-                        <div class="flex flex-wrap gap-3">
-                            {% for server in delegated_dns_servers %}
-                            <a href="{{ server.url }}" target="{{ server.target }}" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded shadow transition-colors text-sm font-medium flex items-center gap-2">
-                                Manage {{ server.ip }}
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
-                            </a>
-                            {% endfor %}
-                        </div>
-                    </div>
+            <!-- Interfaces Section -->
+            <div class="glass-panel p-6 shadow-xl">
+                <div class="flex justify-between items-center mb-4 border-b border-slate-700 pb-2">
+                    <h3 class="text-xl font-bold text-white flex items-center gap-2">
+                        <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                        Network Interfaces
+                    </h3>
+                    <span class="bg-slate-800 text-slate-300 text-xs px-2 py-1 rounded">{{ interfaces | length }} Ports</span>
                 </div>
+                
+                {% if interfaces %}
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="text-slate-400 text-sm border-b border-slate-700/50 bg-slate-800/30">
+                                <th class="py-2.5 px-4 font-semibold">Name</th>
+                                <th class="py-2.5 px-4 font-semibold">Type</th>
+                                <th class="py-2.5 px-4 font-semibold">MAC Address</th>
+                                <th class="py-2.5 px-4 font-semibold">Status</th>
+                                <th class="py-2.5 px-4 font-semibold text-right">Rx / Tx Bytes</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-800/50">
+                            {% for iface in interfaces %}
+                            <tr class="hover:bg-slate-800/50 transition-colors text-sm">
+                                <td class="py-3 px-4 font-mono text-white">{{ iface.get('name', 'N/A') }}</td>
+                                <td class="py-3 px-4 text-slate-400">{{ iface.get('type', 'N/A') }}</td>
+                                <td class="py-3 px-4 font-mono text-sky-300">{{ iface.get('mac-address', 'N/A') }}</td>
+                                <td class="py-3 px-4">
+                                    <span class="px-2 py-0.5 rounded text-xs {% if iface.get('running') == 'true' %}bg-emerald-900/40 text-emerald-400 border border-emerald-800/50{% elif iface.get('disabled') == 'true' %}bg-slate-800 text-slate-500 border border-slate-700{% else %}bg-amber-900/40 text-amber-400 border border-amber-800/50{% endif %}">
+                                        {% if iface.get('disabled') == 'true' %}Disabled{% elif iface.get('running') == 'true' %}Running{% else %}Down{% endif %}
+                                    </span>
+                                </td>
+                                <td class="py-3 px-4 text-slate-400 text-right font-mono text-xs">{{ iface.get('rx-byte', '0') }} / {{ iface.get('tx-byte', '0') }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-8 text-slate-500">No interfaces found.</div>
+                {% endif %}
             </div>
-            {% else %}
+
+            {% if not delegated_dns_servers %}
 
             <!-- DHCP Leases Section -->
             <div class="glass-panel p-6 shadow-xl">
