@@ -1,0 +1,29 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+
+# Environment variables
+.env
+
+# Project specific data directories
+/kuzu-data/
+/vm-data/
+/chroma-data/
+
+# Ansible specific
+/config/inventory.yml
+/collected_facts/
+*.retry
+
+# IDEs and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

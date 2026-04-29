@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NetWatch - Device Management</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #f8fafc; }
+        .glass-panel { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; }
+        .gradient-text { background: linear-gradient(90deg, #38bdf8, #818cf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    </style>
+</head>
+<body class="min-h-screen p-8">
+
+    <div class="max-w-6xl mx-auto">
+        <nav class="glass-panel mb-8 flex justify-between items-center px-6 py-4 shadow-xl">
+            <div class="flex items-center gap-6">
+                <h1 class="text-2xl font-extrabold gradient-text tracking-wider">NetWatch AI</h1>
+                <div class="h-6 w-px bg-slate-700"></div>
+                <div class="flex space-x-1">
+                    <a href="/" class="px-4 py-2 rounded-lg hover:bg-slate-800 text-slate-300 transition-colors text-sm">
+                        &larr; Back to Dashboard
+                    </a>
+                </div>
+            </div>
+            <div class="text-xs text-slate-400">
+                Live API Connection
+            </div>
+        </nav>
+
+        {% if error %}
+        <div class="bg-red-900/50 border border-red-500 text-red-200 px-4 py-3 rounded relative mb-6" role="alert">
+            <strong class="font-bold">API Connection Error!</strong>
+            <span class="block sm:inline">{{ error }}</span>
+        </div>
+        {% endif %}
+
+        <header class="mb-8 flex items-end justify-between">
+            <div>
+                <h2 class="text-3xl font-bold text-white mb-1">Router Management</h2>
+                <div class="flex items-center gap-3">
+                    <span class="text-sky-400 font-mono text-lg">{{ ip }}</span>
+                    <span class="px-2.5 py-0.5 rounded bg-emerald-900/50 text-emerald-400 text-xs border border-emerald-700/50 flex items-center gap-1.5">
+                        <span class="relative flex h-2 w-2">
+                          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                          <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                        </span>
+                        API Connected
+                    </span>
+                </div>
+            </div>
+            <button onclick="window.location.reload()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded text-sm transition-colors border border-slate-600 shadow">
+                Refresh Data
+            </button>
+        </header>
+
+        <div class="grid grid-cols-1 gap-8">
+            {% if delegated_dns_servers %}
+            <div class="glass-panel p-6 shadow-xl border border-indigo-500/30 bg-indigo-900/10">
+                <div class="flex items-start gap-4">
+                    <div class="p-3 bg-indigo-900/50 rounded-lg text-indigo-400">
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-indigo-300 mb-1">Delegated Services Detected</h3>
+                        <p class="text-slate-400 text-sm mb-4">We discovered dedicated DNS/DHCP servers (like Technitium) on this subnet. RouterOS DHCP/DNS tables may be empty or disabled.</p>
+                        <div class="flex flex-wrap gap-3">
+                            {% for server in delegated_dns_servers %}
+                            <a href="{{ server.url }}" target="{{ server.target }}" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded shadow transition-colors text-sm font-medium flex items-center gap-2">
+                                Manage {{ server.ip }}
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                            </a>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+
+            <!-- DHCP Leases Section -->
+            <div class="glass-panel p-6 shadow-xl">
+                <div class="flex justify-between items-center mb-4 border-b border-slate-700 pb-2">
+                    <h3 class="text-xl font-bold text-white flex items-center gap-2">
+                        <svg class="w-5 h-5 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                        DHCP Leases
+                    </h3>
+                    <span class="bg-slate-800 text-slate-300 text-xs px-2 py-1 rounded">{{ dhcp_leases | length }} Active</span>
+                </div>
+                
+                {% if dhcp_leases %}
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="text-slate-400 text-sm border-b border-slate-700/50 bg-slate-800/30">
+                                <th class="py-2.5 px-4 font-semibold">IP Address</th>
+                                <th class="py-2.5 px-4 font-semibold">MAC Address</th>
+                                <th class="py-2.5 px-4 font-semibold">Hostname</th>
+                                <th class="py-2.5 px-4 font-semibold">Status</th>
+                                <th class="py-2.5 px-4 font-semibold text-right">Expires In</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-800/50">
+                            {% for lease in dhcp_leases %}
+                            <tr class="hover:bg-slate-800/50 transition-colors text-sm">
+                                <td class="py-3 px-4 font-mono text-white">{{ lease.get('address', 'N/A') }}</td>
+                                <td class="py-3 px-4 font-mono text-slate-400">{{ lease.get('mac-address', 'N/A') }}</td>
+                                <td class="py-3 px-4 text-sky-300">{{ lease.get('host-name', '<span class="text-slate-600 italic">unknown</span>') | safe }}</td>
+                                <td class="py-3 px-4">
+                                    <span class="px-2 py-0.5 rounded text-xs {% if lease.get('status') == 'bound' %}bg-emerald-900/40 text-emerald-400 border border-emerald-800/50{% else %}bg-slate-800 text-slate-400 border border-slate-700{% endif %}">
+                                        {{ lease.get('status', 'unknown') }}
+                                    </span>
+                                </td>
+                                <td class="py-3 px-4 text-slate-400 text-right font-mono text-xs">{{ lease.get('expires-after', 'Never') }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-8 text-slate-500">No DHCP leases found on this device.</div>
+                {% endif %}
+            </div>
+
+            <!-- DNS Cache Section -->
+            <div class="glass-panel p-6 shadow-xl mb-12">
+                <div class="flex justify-between items-center mb-4 border-b border-slate-700 pb-2">
+                    <h3 class="text-xl font-bold text-white flex items-center gap-2">
+                        <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"></path></svg>
+                        Local DNS Cache
+                    </h3>
+                    <span class="bg-slate-800 text-slate-300 text-xs px-2 py-1 rounded">{{ dns_cache | length }} Records</span>
+                </div>
+                
+                {% if dns_cache %}
+                <div class="overflow-x-auto max-h-96">
+                    <table class="w-full text-left border-collapse relative">
+                        <thead class="sticky top-0 bg-slate-900/95 backdrop-blur z-10 shadow-sm">
+                            <tr class="text-slate-400 text-sm border-b border-slate-700/50">
+                                <th class="py-2.5 px-4 font-semibold">Record Name</th>
+                                <th class="py-2.5 px-4 font-semibold">Data (IP Address)</th>
+                                <th class="py-2.5 px-4 font-semibold">Type</th>
+                                <th class="py-2.5 px-4 font-semibold text-right">TTL</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-800/50">
+                            {% for record in dns_cache %}
+                            <tr class="hover:bg-slate-800/50 transition-colors text-sm">
+                                <td class="py-2 px-4 text-white truncate max-w-xs">{{ record.get('name') }}</td>
+                                <td class="py-2 px-4 font-mono text-sky-400">{{ record.get('data') }}</td>
+                                <td class="py-2 px-4">
+                                    <span class="px-2 py-0.5 rounded text-[10px] uppercase tracking-wider bg-slate-800 text-slate-400 border border-slate-700">
+                                        {{ record.get('type', 'A') }}
+                                    </span>
+                                </td>
+                                <td class="py-2 px-4 text-slate-500 text-right font-mono text-xs">{{ record.get('ttl', 'N/A') }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-8 text-slate-500">No active DNS records cached on this device.</div>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>

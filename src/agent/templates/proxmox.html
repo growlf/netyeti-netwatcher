@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NetWatch - Proxmox Management</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #f8fafc; }
+        .glass-panel { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; }
+        .gradient-text { background: linear-gradient(90deg, #f97316, #facc15); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    </style>
+</head>
+<body class="min-h-screen p-8">
+
+    <div class="max-w-7xl mx-auto flex gap-6">
+        <!-- Sidebar Navigation -->
+        <aside class="w-64 flex-shrink-0">
+            <div class="glass-panel p-6 shadow-xl sticky top-8">
+                <h1 class="text-xl font-extrabold gradient-text tracking-wider mb-6">Proxmox VE</h1>
+                
+                <nav class="space-y-2">
+                    <a href="/" class="flex items-center gap-3 px-4 py-2.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors text-sm mb-4">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                        Back to Dashboard
+                    </a>
+                    <div class="h-px bg-slate-700 my-4"></div>
+                    <button onclick="switchTab('overview')" id="tab-overview" class="w-full flex items-center justify-between px-4 py-2.5 bg-orange-600/20 text-orange-400 rounded-lg transition-colors text-sm font-medium border border-orange-500/30">
+                        Overview
+                    </button>
+                    <button onclick="switchTab('vms')" id="tab-vms" class="w-full flex items-center justify-between px-4 py-2.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors text-sm font-medium border border-transparent">
+                        Virtual Machines
+                        <span class="bg-slate-800 text-slate-300 py-0.5 px-2 rounded-full text-xs">{{ vms | length }}</span>
+                    </button>
+                    <button onclick="switchTab('lxcs')" id="tab-lxcs" class="w-full flex items-center justify-between px-4 py-2.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors text-sm font-medium border border-transparent">
+                        LXC Containers
+                        <span class="bg-slate-800 text-slate-300 py-0.5 px-2 rounded-full text-xs">{{ lxcs | length }}</span>
+                    </button>
+                </nav>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="flex-1">
+            <header class="mb-6 flex justify-between items-end">
+                <div>
+                    <h2 class="text-3xl font-bold text-white mb-1">Host: {{ node_name }}</h2>
+                    <div class="flex items-center gap-3">
+                        <span class="text-slate-400 font-mono text-lg">{{ ip }}</span>
+                        <span class="px-2.5 py-0.5 rounded bg-emerald-900/50 text-emerald-400 text-xs border border-emerald-700/50 flex items-center gap-1.5">
+                            API Connected
+                        </span>
+                    </div>
+                </div>
+                <button onclick="window.location.reload()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded text-sm transition-colors border border-slate-600 shadow">
+                    Refresh Data
+                </button>
+            </header>
+
+            {% if error %}
+            <div class="bg-red-900/50 border border-red-500 text-red-200 px-4 py-3 rounded relative mb-6" role="alert">
+                <strong class="font-bold">Proxmox API Error!</strong>
+                <span class="block sm:inline">{{ error }}</span>
+            </div>
+            {% endif %}
+
+            <!-- Overview Tab -->
+            <div id="content-overview" class="space-y-6">
+                <div class="grid grid-cols-3 gap-6">
+                    <div class="glass-panel p-6">
+                        <div class="text-slate-400 text-sm mb-1">CPU Usage</div>
+                        <div class="text-3xl font-bold text-white">{{ "%.1f"|format((node_status.get('cpu', 0) * 100)) }}%</div>
+                        <div class="text-xs text-slate-500 mt-2">{{ node_status.get('cpuinfo', {}).get('cpus', 0) }} Cores</div>
+                    </div>
+                    <div class="glass-panel p-6">
+                        <div class="text-slate-400 text-sm mb-1">Memory Usage</div>
+                        {% set mem_total = node_status.get('memory', {}).get('total', 1) %}
+                        {% set mem_used = node_status.get('memory', {}).get('used', 0) %}
+                        <div class="text-3xl font-bold text-white">{{ "%.1f"|format((mem_used / mem_total) * 100) }}%</div>
+                        <div class="text-xs text-slate-500 mt-2">{{ "%.2f"|format(mem_used / 1073741824) }} GB / {{ "%.2f"|format(mem_total / 1073741824) }} GB</div>
+                    </div>
+                    <div class="glass-panel p-6">
+                        <div class="text-slate-400 text-sm mb-1">Uptime</div>
+                        <div class="text-3xl font-bold text-white" id="uptime-display">{{ node_status.get('uptime', 0) }}s</div>
+                        <div class="text-xs text-slate-500 mt-2">PVE Version: {{ node_status.get('pveversion', 'Unknown') }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VMs Tab -->
+            <div id="content-vms" class="hidden">
+                <div class="glass-panel p-6 shadow-xl">
+                    <h3 class="text-xl font-bold text-white mb-6 border-b border-slate-700 pb-2">Virtual Machines</h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="text-slate-400 text-sm border-b border-slate-700/50">
+                                    <th class="py-3 px-4 font-semibold">VMID</th>
+                                    <th class="py-3 px-4 font-semibold">Name</th>
+                                    <th class="py-3 px-4 font-semibold">Status</th>
+                                    <th class="py-3 px-4 font-semibold">CPU</th>
+                                    <th class="py-3 px-4 font-semibold">Memory</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-800/50">
+                                {% for vm in vms %}
+                                <tr class="hover:bg-slate-800/50 transition-colors">
+                                    <td class="py-3 px-4 font-mono text-slate-400">{{ vm.vmid }}</td>
+                                    <td class="py-3 px-4 text-white font-medium">{{ vm.name }}</td>
+                                    <td class="py-3 px-4">
+                                        {% if vm.status == 'running' %}
+                                        <span class="px-2 py-0.5 bg-emerald-900/40 text-emerald-400 border border-emerald-800/50 rounded text-xs">Running</span>
+                                        {% else %}
+                                        <span class="px-2 py-0.5 bg-slate-800 text-slate-400 border border-slate-700 rounded text-xs">Stopped</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="py-3 px-4 text-slate-300 text-sm">{{ vm.cpus }} Cores</td>
+                                    <td class="py-3 px-4 text-slate-300 text-sm">{{ "%.1f"|format(vm.maxmem / 1073741824) }} GB</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- LXCs Tab -->
+            <div id="content-lxcs" class="hidden">
+                <div class="glass-panel p-6 shadow-xl">
+                    <h3 class="text-xl font-bold text-white mb-6 border-b border-slate-700 pb-2">LXC Containers</h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="text-slate-400 text-sm border-b border-slate-700/50">
+                                    <th class="py-3 px-4 font-semibold">CTID</th>
+                                    <th class="py-3 px-4 font-semibold">Name</th>
+                                    <th class="py-3 px-4 font-semibold">Status</th>
+                                    <th class="py-3 px-4 font-semibold">CPU</th>
+                                    <th class="py-3 px-4 font-semibold">Memory</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-800/50">
+                                {% for lxc in lxcs %}
+                                <tr class="hover:bg-slate-800/50 transition-colors">
+                                    <td class="py-3 px-4 font-mono text-slate-400">{{ lxc.vmid }}</td>
+                                    <td class="py-3 px-4 text-white font-medium">{{ lxc.name }}</td>
+                                    <td class="py-3 px-4">
+                                        {% if lxc.status == 'running' %}
+                                        <span class="px-2 py-0.5 bg-emerald-900/40 text-emerald-400 border border-emerald-800/50 rounded text-xs">Running</span>
+                                        {% else %}
+                                        <span class="px-2 py-0.5 bg-slate-800 text-slate-400 border border-slate-700 rounded text-xs">Stopped</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="py-3 px-4 text-slate-300 text-sm">{{ lxc.cpus }} Cores</td>
+                                    <td class="py-3 px-4 text-slate-300 text-sm">{{ "%.1f"|format(lxc.maxmem / 1073741824) }} GB</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <script>
+        // Tab Switching Logic
+        function switchTab(tabId) {
+            const tabs = ['overview', 'vms', 'lxcs'];
+            tabs.forEach(t => {
+                // Hide all contents
+                document.getElementById(`content-${t}`).classList.add('hidden');
+                
+                // Reset tab styles
+                const tabEl = document.getElementById(`tab-${t}`);
+                tabEl.className = "w-full flex items-center justify-between px-4 py-2.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors text-sm font-medium border border-transparent";
+            });
+
+            // Show selected content
+            document.getElementById(`content-${tabId}`).classList.remove('hidden');
+            
+            // Set active tab style
+            const activeTab = document.getElementById(`tab-${tabId}`);
+            activeTab.className = "w-full flex items-center justify-between px-4 py-2.5 bg-orange-600/20 text-orange-400 rounded-lg transition-colors text-sm font-medium border border-orange-500/30";
+        }
+
+        // Format Uptime
+        const uptimeEl = document.getElementById('uptime-display');
+        if (uptimeEl) {
+            const seconds = parseInt(uptimeEl.innerText);
+            const days = Math.floor(seconds / (3600*24));
+            const hours = Math.floor(seconds % (3600*24) / 3600);
+            const minutes = Math.floor(seconds % 3600 / 60);
+            uptimeEl.innerText = `${days}d ${hours}h ${minutes}m`;
+        }
+    </script>
+</body>
+</html>

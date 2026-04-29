@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  victoria:
+    image: victoriametrics/victoria-metrics:latest
+    container_name: netwatch_victoria
+    ports:
+      - "${VICTORIA_PORT:-8428}:8428"
+    volumes:
+      - ./vm-data:/storage
+      - ./config/prometheus.yml:/prometheus.yml:ro
+    restart: unless-stopped
+    command:
+      - "--storageDataPath=/storage"
+      - "--promscrape.config=/prometheus.yml"
+
+  chroma:
+    image: chromadb/chroma:latest
+    container_name: netwatch_chroma
+    ports:
+      - "${CHROMA_PORT:-8000}:8000"
+    volumes:
+      - ./chroma-data:/chroma/chroma
+    restart: unless-stopped
+
+  kuzu_explorer:
+    image: kuzudb/explorer:latest
+    container_name: netwatch_kuzu_explorer
+    ports:
+      - "8001:8000"
+    volumes:
+      - ./kuzu-data:/database:ro
+    environment:
+      - MODE=READ_ONLY
+      - KUZU_FILE=netwatch.kuzu
+    user: "0:0"
+    restart: unless-stopped
+  agent:
+    build:
+      context: ./src/agent
+    container_name: netwatch_agent
+    network_mode: host
+    volumes:
+      - ./config:/app/config
+      - ./kuzu-data:/data
+      - ${HOST_SSH_DIR:-~/.ssh}:/root/.ssh:ro
+    restart: unless-stopped
+    environment:
+      - COLLECTION_INTERVAL_SECONDS=${COLLECTION_INTERVAL_SECONDS:-3600}
+      - ANSIBLE_CONFIG=/app/config/ansible.cfg
+      - AUTO_DISCOVERY=${AUTO_DISCOVERY:-true}
+      - ROUTER_WAN_IP=${ROUTER_WAN_IP:-}
+      - TRACEROUTE_TARGET=${TRACEROUTE_TARGET:-8.8.8.8}

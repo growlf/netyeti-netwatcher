@@ -1,0 +1,10 @@
+---
+all:
+  hosts:
+    localhost:
+      ansible_connection: local
+  children:
+    lan_devices:
+      hosts:
+        127.0.0.1:
+        

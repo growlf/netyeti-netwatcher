@@ -1,0 +1,13 @@
+kuzu
+llama-index
+chromadb
+llama-index-llms-ollama
+ansible
+fastapi
+uvicorn
+jinja2
+paramiko
+routeros-api
+python-multipart
+proxmoxer
+requests

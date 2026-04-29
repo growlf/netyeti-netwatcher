@@ -1,0 +1,46 @@
+---
+- name: Network Telemetry Collection - Gather Facts
+  hosts: all
+  gather_facts: false
+  
+  tasks:
+    - name: Ensure output directory exists locally
+      delegate_to: localhost
+      run_once: true
+      ansible.builtin.file:
+        path: "./collected_facts"
+        state: directory
+        mode: '0755'
+
+    - name: Gather facts from network devices (if applicable)
+      when: ansible_network_os is defined
+      block:
+        - name: Gather IOS facts
+          cisco.ios.ios_facts:
+            gather_subset: all
+          when: ansible_network_os == 'cisco.ios'
+
+        - name: Gather NXOS facts
+          cisco.nxos.nxos_facts:
+            gather_subset: all
+          when: ansible_network_os == 'cisco.nxos'
+
+        - name: Gather Arista EOS facts
+          arista.eos.eos_facts:
+            gather_subset: all
+          when: ansible_network_os == 'arista.eos'
+
+        - name: Gather MikroTik RouterOS facts
+          community.routeros.facts:
+            gather_subset: all
+          when: ansible_network_os == 'community.routeros.routeros'
+
+    - name: Save gathered facts to local JSON file
+      delegate_to: localhost
+      ansible.builtin.copy:
+        content: "{{ ansible_facts | to_nice_json(indent=2) }}"
+        dest: "./collected_facts/{{ inventory_hostname }}_facts.json"
+
+    - name: Output completion message
+      ansible.builtin.debug:
+        msg: "Facts successfully collected and saved to ./collected_facts/{{ inventory_hostname }}_facts.json"

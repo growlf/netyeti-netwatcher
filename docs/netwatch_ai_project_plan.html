@@ -1,0 +1,493 @@
+
+<style>
+  :root {
+    --blue-50: #E6F1FB; --blue-100: #B5D4F4; --blue-600: #185FA5; --blue-800: #0C447C;
+    --teal-50: #E1F5EE; --teal-100: #9FE1CB; --teal-600: #0F6E56; --teal-800: #085041;
+    --amber-50: #FAEEDA; --amber-100: #FAC775; --amber-600: #854F0B; --amber-800: #633806;
+    --purple-50: #EEEDFE; --purple-100: #CECBF6; --purple-600: #534AB7; --purple-800: #3C3489;
+    --coral-50: #FAECE7; --coral-100: #F5C4B3; --coral-600: #993C1D; --coral-800: #712B13;
+    --green-50: #EAF3DE; --green-100: #C0DD97; --green-600: #3B6D11; --green-800: #27500A;
+    --gray-50: #F1EFE8; --gray-200: #B4B2A9; --gray-600: #5F5E5A; --gray-800: #444441;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--font-sans, sans-serif); color: var(--color-text-primary); background: transparent; }
+  .container { max-width: 680px; padding: 0 0 2rem; }
+  .header { border-bottom: 0.5px solid var(--color-border-tertiary); padding: 1.5rem 0 1rem; margin-bottom: 1.5rem; }
+  .header h1 { font-size: 20px; font-weight: 500; margin-bottom: 4px; }
+  .header p { font-size: 13px; color: var(--color-text-secondary); }
+  .badge { display: inline-block; font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 4px; margin-left: 8px; vertical-align: middle; }
+  .tab-row { display: flex; gap: 6px; margin-bottom: 1.5rem; flex-wrap: wrap; }
+  .tab { padding: 6px 14px; font-size: 13px; font-weight: 500; border: 0.5px solid var(--color-border-tertiary); border-radius: 6px; cursor: pointer; background: transparent; color: var(--color-text-secondary); transition: all .15s; }
+  .tab:hover { background: var(--color-background-secondary); color: var(--color-text-primary); }
+  .tab.active { background: var(--color-background-secondary); color: var(--color-text-primary); border-color: var(--color-border-secondary); }
+  .section { display: none; }
+  .section.active { display: block; }
+  .phase-card { border: 0.5px solid var(--color-border-tertiary); border-radius: 12px; margin-bottom: 1rem; overflow: hidden; }
+  .phase-header { display: flex; align-items: center; gap: 10px; padding: 12px 16px; cursor: pointer; user-select: none; }
+  .phase-header:hover { background: var(--color-background-secondary); }
+  .phase-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .phase-title { font-size: 14px; font-weight: 500; flex: 1; }
+  .phase-meta { font-size: 12px; color: var(--color-text-secondary); }
+  .phase-arrow { font-size: 12px; color: var(--color-text-tertiary); transition: transform .2s; }
+  .phase-arrow.open { transform: rotate(90deg); }
+  .phase-body { display: none; padding: 0 16px 16px; border-top: 0.5px solid var(--color-border-tertiary); }
+  .phase-body.open { display: block; }
+  .phase-body h4 { font-size: 12px; font-weight: 500; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: .05em; margin: 12px 0 6px; }
+  .task-row { display: flex; align-items: flex-start; gap: 8px; padding: 5px 0; font-size: 13px; border-bottom: 0.5px solid var(--color-border-tertiary); }
+  .task-row:last-child { border-bottom: none; }
+  .task-num { font-size: 11px; color: var(--color-text-tertiary); min-width: 20px; margin-top: 1px; }
+  .task-text { flex: 1; line-height: 1.5; }
+  .task-tag { font-size: 11px; padding: 1px 6px; border-radius: 3px; flex-shrink: 0; margin-top: 2px; }
+  .goal-list { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 1.5rem; }
+  .goal-card { border: 0.5px solid var(--color-border-tertiary); border-radius: 8px; padding: 10px 12px; }
+  .goal-card .icon { font-size: 16px; margin-bottom: 4px; }
+  .goal-card .title { font-size: 13px; font-weight: 500; margin-bottom: 3px; }
+  .goal-card .desc { font-size: 12px; color: var(--color-text-secondary); line-height: 1.4; }
+  .arch-diagram { width: 100%; }
+  .layer-label { font-size: 11px; font-weight: 500; color: var(--color-text-tertiary); text-transform: uppercase; letter-spacing: .06em; }
+  .int-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
+  .int-card { border: 0.5px solid var(--color-border-tertiary); border-radius: 8px; padding: 10px 12px; }
+  .int-card .tool-name { font-size: 13px; font-weight: 500; margin-bottom: 2px; }
+  .int-card .tool-phase { font-size: 11px; margin-bottom: 5px; }
+  .int-card .tool-desc { font-size: 12px; color: var(--color-text-secondary); line-height: 1.4; }
+  .risk-row { display: flex; gap: 10px; padding: 8px 0; border-bottom: 0.5px solid var(--color-border-tertiary); font-size: 13px; }
+  .risk-row:last-child { border-bottom: none; }
+  .risk-sev { font-size: 11px; font-weight: 500; padding: 2px 7px; border-radius: 4px; flex-shrink: 0; margin-top: 1px; height: fit-content; }
+  .risk-text { flex: 1; }
+  .risk-mit { font-size: 12px; color: var(--color-text-secondary); margin-top: 2px; }
+  .timeline-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 0.5px solid var(--color-border-tertiary); font-size: 13px; }
+  .timeline-row:last-child { border-bottom: none; }
+  .tl-phase { font-size: 11px; font-weight: 500; padding: 2px 7px; border-radius: 4px; flex-shrink: 0; min-width: 56px; text-align: center; }
+  .tl-dur { font-size: 12px; color: var(--color-text-secondary); min-width: 80px; }
+  .tl-bar-wrap { flex: 1; height: 6px; background: var(--color-background-secondary); border-radius: 3px; overflow: hidden; }
+  .tl-bar { height: 100%; border-radius: 3px; }
+  .tl-name { font-size: 12px; color: var(--color-text-secondary); min-width: 80px; text-align: right; }
+  section.arch-sec { margin-bottom: 1.5rem; }
+  .arch-sec h3 { font-size: 13px; font-weight: 500; color: var(--color-text-secondary); margin-bottom: 8px; }
+  .note-box { border-left: 3px solid; border-radius: 0 6px 6px 0; padding: 8px 12px; margin-bottom: 1rem; font-size: 13px; line-height: 1.5; }
+  .note-box strong { font-weight: 500; display: block; margin-bottom: 2px; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+</style>
+
+<div class="container">
+  <div class="header">
+    <h1>NetWatch AI — Network Intelligence Assistant <span class="badge" style="background:var(--blue-50);color:var(--blue-800);">Project Plan v1.0</span></h1>
+    <p>Local LLM-powered network awareness, anomaly detection, and diagnostic assistant &nbsp;·&nbsp; Garth / The NetYeti &nbsp;·&nbsp; 2026</p>
+  </div>
+
+  <div class="tab-row">
+    <button class="tab active" onclick="showTab('goals')">Goals</button>
+    <button class="tab" onclick="showTab('arch')">Architecture</button>
+    <button class="tab" onclick="showTab('phases')">Phases</button>
+    <button class="tab" onclick="showTab('integrations')">Integrations</button>
+    <button class="tab" onclick="showTab('risks')">Risks</button>
+    <button class="tab" onclick="showTab('timeline')">Timeline</button>
+  </div>
+
+  <!-- GOALS -->
+  <div id="tab-goals" class="section active">
+    <div class="goal-list">
+      <div class="goal-card">
+        <div class="icon">🗂</div>
+        <div class="title">Complete network memory</div>
+        <div class="desc">Every device, relationship, port, VLAN, and config stored in a queryable graph — always current.</div>
+      </div>
+      <div class="goal-card">
+        <div class="icon">💬</div>
+        <div class="title">Natural language queries</div>
+        <div class="desc">Ask in plain English: "what changed on the edge router today?" or "which hosts are talking on 8443?"</div>
+      </div>
+      <div class="goal-card">
+        <div class="icon">🔍</div>
+        <div class="title">Proactive anomaly detection</div>
+        <div class="desc">Agents detect deviations from baseline and surface them as pre-diagnosed alerts before escalation.</div>
+      </div>
+      <div class="goal-card">
+        <div class="icon">📦</div>
+        <div class="title">Efficient context management</div>
+        <div class="desc">LLM context stays lean via RAG — only pertinent facts injected, never the full network dump.</div>
+      </div>
+      <div class="goal-card">
+        <div class="icon">🔌</div>
+        <div class="title">Extensible integration layer</div>
+        <div class="desc">Grafana, Slack, Obsidian, and future tools bolt on cleanly without restructuring the core.</div>
+      </div>
+      <div class="goal-card">
+        <div class="icon">🏠</div>
+        <div class="title">100% local / self-hosted</div>
+        <div class="desc">No cloud dependency. Runs on phoenix or a dedicated LXC. All data stays on-premise.</div>
+      </div>
+    </div>
+
+    <div class="note-box" style="border-color: var(--blue-600); background: var(--blue-50);">
+      <strong style="color:var(--blue-800);">Design principle</strong>
+      <span style="color:var(--blue-800);">The LLM is the <em>reasoning engine</em>, not the memory store. All network state lives in structured databases — the LLM retrieves only what's needed to answer each query. This keeps responses fast, accurate, and context-efficient regardless of network size.</span>
+    </div>
+
+    <div class="note-box" style="border-color: var(--amber-600); background: var(--amber-50);">
+      <strong style="color:var(--amber-800);">Scope of v1</strong>
+      <span style="color:var(--amber-800);">Phase 1 focuses exclusively on the data model, storage layer, and one working collector agent. Query capability comes in Phase 2. Proactive alerting is Phase 3. Integrations (Grafana, Slack, Obsidian) are Phase 4+. This sequencing prevents infra debt.</span>
+    </div>
+  </div>
+
+  <!-- ARCHITECTURE -->
+  <div id="tab-arch" class="section">
+    <svg class="arch-diagram" viewBox="0 0 640 520" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </marker>
+      </defs>
+
+      <!-- Layer: Collectors -->
+      <text x="16" y="32" class="layer-label" style="font-size:10px;fill:var(--color-text-tertiary);font-weight:500;font-family:var(--font-sans,sans-serif)">COLLECTION LAYER</text>
+      <rect x="16" y="40" width="96" height="44" rx="6" fill="var(--teal-50)" stroke="var(--teal-600)" stroke-width="0.5"/>
+      <text x="64" y="60" text-anchor="middle" style="font-size:12px;font-weight:500;fill:var(--teal-800);font-family:var(--font-sans,sans-serif)">nmap / SNMP</text>
+      <text x="64" y="75" text-anchor="middle" style="font-size:10px;fill:var(--teal-600);font-family:var(--font-sans,sans-serif)">Host discovery</text>
+
+      <rect x="124" y="40" width="96" height="44" rx="6" fill="var(--teal-50)" stroke="var(--teal-600)" stroke-width="0.5"/>
+      <text x="172" y="60" text-anchor="middle" style="font-size:12px;font-weight:500;fill:var(--teal-800);font-family:var(--font-sans,sans-serif)">Node exporters</text>
+      <text x="172" y="75" text-anchor="middle" style="font-size:10px;fill:var(--teal-600);font-family:var(--font-sans,sans-serif)">Metrics / health</text>
+
+      <rect x="232" y="40" width="96" height="44" rx="6" fill="var(--teal-50)" stroke="var(--teal-600)" stroke-width="0.5"/>
+      <text x="280" y="60" text-anchor="middle" style="font-size:12px;font-weight:500;fill:var(--teal-800);font-family:var(--font-sans,sans-serif)">Syslog / events</text>
+      <text x="280" y="75" text-anchor="middle" style="font-size:10px;fill:var(--teal-600);font-family:var(--font-sans,sans-serif)">Log streaming</text>
+
+      <rect x="340" y="40" width="96" height="44" rx="6" fill="var(--teal-50)" stroke="var(--teal-600)" stroke-width="0.5"/>
+      <text x="388" y="60" text-anchor="middle" style="font-size:12px;font-weight:500;fill:var(--teal-800);font-family:var(--font-sans,sans-serif)">Custom scripts</text>
+      <text x="388" y="75" text-anchor="middle" style="font-size:10px;fill:var(--teal-600);font-family:var(--font-sans,sans-serif)">API / SSH polls</text>
+
+      <rect x="448" y="40" width="96" height="44" rx="6" fill="var(--teal-50)" stroke="var(--teal-600)" stroke-width="0.5"/>
+      <text x="496" y="60" text-anchor="middle" style="font-size:12px;font-weight:500;fill:var(--teal-800);font-family:var(--font-sans,sans-serif)">Anomaly agent</text>
+      <text x="496" y="75" text-anchor="middle" style="font-size:10px;fill:var(--teal-600);font-family:var(--font-sans,sans-serif)">Continuous watch</text>
+
+      <!-- Arrows down to storage -->
+      <line x1="64" y1="84" x2="64" y2="138" stroke="var(--gray-200)" stroke-width="1" marker-end="url(#arr)"/>
+      <line x1="172" y1="84" x2="172" y2="138" stroke="var(--gray-200)" stroke-width="1" marker-end="url(#arr)"/>
+      <line x1="280" y1="84" x2="280" y2="138" stroke="var(--gray-200)" stroke-width="1" marker-end="url(#arr)"/>
+      <line x1="388" y1="84" x2="388" y2="138" stroke="var(--gray-200)" stroke-width="1" marker-end="url(#arr)"/>
+      <line x1="496" y1="84" x2="496" y2="138" stroke="var(--gray-200)" stroke-width="1" marker-end="url(#arr)"/>
+
+      <!-- Layer: Storage -->
+      <text x="16" y="130" class="layer-label" style="font-size:10px;fill:var(--color-text-tertiary);font-weight:500;font-family:var(--font-sans,sans-serif)">STORAGE LAYER</text>
+      <rect x="16" y="140" width="148" height="56" rx="8" fill="var(--purple-50)" stroke="var(--purple-600)" stroke-width="0.5"/>
+      <text x="90" y="162" text-anchor="middle" style="font-size:13px;font-weight:500;fill:var(--purple-800);font-family:var(--font-sans,sans-serif)">Graph DB (Kuzu)</text>
+      <text x="90" y="178" text-anchor="middle" style="font-size:10px;fill:var(--purple-600);font-family:var(--font-sans,sans-serif)">Devices, relationships,</text>
+      <text x="90" y="190" text-anchor="middle" style="font-size:10px;fill:var(--purple-600);font-family:var(--font-sans,sans-serif)">topology, configs</text>
+
+      <rect x="180" y="140" width="148" height="56" rx="8" fill="var(--amber-50)" stroke="var(--amber-600)" stroke-width="0.5"/>
+      <text x="254" y="162" text-anchor="middle" style="font-size:13px;font-weight:500;fill:var(--amber-800);font-family:var(--font-sans,sans-serif)">Time-series (VM)</text>
+      <text x="254" y="178" text-anchor="middle" style="font-size:10px;fill:var(--amber-600);font-family:var(--font-sans,sans-serif)">Metrics, latency,</text>
+      <text x="254" y="190" text-anchor="middle" style="font-size:10px;fill:var(--amber-600);font-family:var(--font-sans,sans-serif)">bandwidth, health</text>
+
+      <rect x="344" y="140" width="148" height="56" rx="8" fill="var(--coral-50)" stroke="var(--coral-600)" stroke-width="0.5"/>
+      <text x="418" y="162" text-anchor="middle" style="font-size:13px;font-weight:500;fill:var(--coral-800);font-family:var(--font-sans,sans-serif)">Vector DB (Chroma)</text>
+      <text x="418" y="178" text-anchor="middle" style="font-size:10px;fill:var(--coral-600);font-family:var(--font-sans,sans-serif)">Semantic summaries,</text>
+      <text x="418" y="190" text-anchor="middle" style="font-size:10px;fill:var(--coral-600);font-family:var(--font-sans,sans-serif)">events, anomalies</text>
+
+      <!-- Arrows to summarizer -->
+      <line x1="90" y1="196" x2="90" y2="254" stroke="var(--gray-200)" stroke-width="1" marker-end="url(#arr)"/>
+      <line x1="254" y1="196" x2="254" y2="254" stroke="var(--gray-200)" stroke-width="1" marker-end="url(#arr)"/>
+      <line x1="418" y1="196" x2="418" y2="254" stroke="var(--gray-200)" stroke-width="1" marker-end="url(#arr)"/>
+
+      <!-- Layer: Compression -->
+      <text x="16" y="248" style="font-size:10px;fill:var(--color-text-tertiary);font-weight:500;font-family:var(--font-sans,sans-serif)">COMPRESSION LAYER</text>
+      <rect x="16" y="256" width="608" height="52" rx="8" fill="var(--green-50)" stroke="var(--green-600)" stroke-width="0.5"/>
+      <text x="320" y="278" text-anchor="middle" style="font-size:13px;font-weight:500;fill:var(--green-800);font-family:var(--font-sans,sans-serif)">Summarizer / Context Compressor</text>
+      <text x="320" y="296" text-anchor="middle" style="font-size:11px;fill:var(--green-600);font-family:var(--font-sans,sans-serif)">Periodically generates compact NL snapshots → embeds into Chroma · Keeps LLM context ≤4k tokens</text>
+
+      <!-- Arrow to retrieval -->
+      <line x1="320" y1="308" x2="320" y2="358" stroke="var(--gray-200)" stroke-width="1" marker-end="url(#arr)"/>
+
+      <!-- Layer: Retrieval -->
+      <text x="16" y="352" style="font-size:10px;fill:var(--color-text-tertiary);font-weight:500;font-family:var(--font-sans,sans-serif)">RETRIEVAL LAYER</text>
+      <rect x="16" y="360" width="608" height="52" rx="8" fill="var(--blue-50)" stroke="var(--blue-600)" stroke-width="0.5"/>
+      <text x="320" y="382" text-anchor="middle" style="font-size:13px;font-weight:500;fill:var(--blue-800);font-family:var(--font-sans,sans-serif)">LlamaIndex Query Engine</text>
+      <text x="320" y="400" text-anchor="middle" style="font-size:11px;fill:var(--blue-600);font-family:var(--font-sans,sans-serif)">RAG orchestrator · routes query → Kuzu graph query + Chroma vector search → ranked context chunks</text>
+
+      <!-- Arrow to LLM -->
+      <line x1="320" y1="412" x2="320" y2="458" stroke="var(--gray-200)" stroke-width="1" marker-end="url(#arr)"/>
+
+      <!-- Layer: LLM -->
+      <text x="16" y="452" style="font-size:10px;fill:var(--color-text-tertiary);font-weight:500;font-family:var(--font-sans,sans-serif)">REASONING LAYER</text>
+      <rect x="16" y="460" width="608" height="48" rx="8" fill="var(--gray-50)" stroke="var(--gray-200)" stroke-width="0.5"/>
+      <text x="320" y="481" text-anchor="middle" style="font-size:13px;font-weight:500;fill:var(--gray-800);font-family:var(--font-sans,sans-serif)">Local LLM via Ollama (deepseek-r1:14b / qwen2.5-coder:14b)</text>
+      <text x="320" y="498" text-anchor="middle" style="font-size:11px;fill:var(--gray-600);font-family:var(--font-sans,sans-serif)">Receives compact context + query · Returns diagnosis, summary, or alert reasoning</text>
+    </svg>
+
+    <div style="margin-top:1rem;">
+      <div class="note-box" style="border-color:var(--purple-600);background:var(--purple-50);">
+        <strong style="color:var(--purple-800);">Why a graph DB?</strong>
+        <span style="color:var(--purple-800);">Network topology is inherently relational. Kuzu lets you query: "find all hosts two hops from the edge router on VLAN 10 that have open port 22" — a query that would require complex joins in SQL but is natural in Cypher.</span>
+      </div>
+      <div class="note-box" style="border-color:var(--green-600);background:var(--green-50);">
+        <strong style="color:var(--green-800);">Context compression is the key innovation</strong>
+        <span style="color:var(--green-800);">A background summarizer process periodically reads fresh state and writes compressed natural-language snapshots back to Chroma. The LLM never sees raw data — only pre-digested, semantically indexed summaries retrieved by relevance.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- PHASES -->
+  <div id="tab-phases" class="section">
+
+    <div class="phase-card">
+      <div class="phase-header" onclick="togglePhase('p1')">
+        <div class="phase-dot" style="background:var(--teal-600)"></div>
+        <div class="phase-title">Phase 1 — Data Foundation</div>
+        <div class="phase-meta">Weeks 1–3 &nbsp;·&nbsp; <span class="badge" style="background:var(--teal-50);color:var(--teal-800);">Start here</span></div>
+        <div class="phase-arrow" id="arr-p1">▶</div>
+      </div>
+      <div class="phase-body" id="body-p1">
+        <h4>Goal</h4>
+        <p style="font-size:13px;color:var(--color-text-secondary);margin-bottom:8px">Define the data model, stand up storage, and get one working collection agent writing real data.</p>
+        <h4>Tasks</h4>
+        <div class="task-row"><span class="task-num">1.1</span><span class="task-text">Design device schema: nodes (Host, Switch, Router, Service), edges (CONNECTS_TO, RUNS_ON, HAS_PORT)</span><span class="task-tag" style="background:var(--purple-50);color:var(--purple-800)">Design</span></div>
+        <div class="task-row"><span class="task-num">1.2</span><span class="task-text">Install and configure Kuzu (embeddable graph DB) in Docker/LXC on phoenix</span><span class="task-tag" style="background:var(--teal-50);color:var(--teal-800)">Infra</span></div>
+        <div class="task-row"><span class="task-num">1.3</span><span class="task-text">Install VictoriaMetrics for time-series (lighter than InfluxDB, Prometheus-compatible)</span><span class="task-tag" style="background:var(--teal-50);color:var(--teal-800)">Infra</span></div>
+        <div class="task-row"><span class="task-num">1.4</span><span class="task-text">Install Chroma vector DB, configure persistence volume</span><span class="task-tag" style="background:var(--teal-50);color:var(--teal-800)">Infra</span></div>
+        <div class="task-row"><span class="task-num">1.5</span><span class="task-text">Write nmap agent: scheduled scan → parse output → upsert Host nodes in Kuzu</span><span class="task-tag" style="background:var(--amber-50);color:var(--amber-800)">Code</span></div>
+        <div class="task-row"><span class="task-num">1.6</span><span class="task-text">Validate: query Kuzu to list all discovered hosts and their open ports</span><span class="task-tag" style="background:var(--green-50);color:var(--green-800)">Test</span></div>
+        <div class="task-row"><span class="task-num">1.7</span><span class="task-text">Document schema decisions in Obsidian vault (netwatch/schema.md)</span><span class="task-tag" style="background:var(--gray-50);color:var(--gray-600)">Docs</span></div>
+        <h4>Deliverables</h4>
+        <p style="font-size:13px;color:var(--color-text-secondary)">Working graph DB with device nodes populated from a real scan. Schema documented. Storage stack running in containers.</p>
+      </div>
+    </div>
+
+    <div class="phase-card">
+      <div class="phase-header" onclick="togglePhase('p2')">
+        <div class="phase-dot" style="background:var(--blue-600)"></div>
+        <div class="phase-title">Phase 2 — LLM Query Interface</div>
+        <div class="phase-meta">Weeks 4–6</div>
+        <div class="phase-arrow" id="arr-p2">▶</div>
+      </div>
+      <div class="phase-body" id="body-p2">
+        <h4>Goal</h4>
+        <p style="font-size:13px;color:var(--color-text-secondary);margin-bottom:8px">Wire LlamaIndex to the storage layer and enable basic natural language queries about the network.</p>
+        <h4>Tasks</h4>
+        <div class="task-row"><span class="task-num">2.1</span><span class="task-text">Set up LlamaIndex with Ollama connector (point at existing OpenClaw endpoint port 18789)</span><span class="task-tag" style="background:var(--amber-50);color:var(--amber-800)">Code</span></div>
+        <div class="task-row"><span class="task-num">2.2</span><span class="task-text">Build Kuzu query tool for LlamaIndex: translates NL intent → Cypher → structured results</span><span class="task-tag" style="background:var(--amber-50);color:var(--amber-800)">Code</span></div>
+        <div class="task-row"><span class="task-num">2.3</span><span class="task-text">Build Chroma retriever: embed query → cosine search → top-k context chunks</span><span class="task-tag" style="background:var(--amber-50);color:var(--amber-800)">Code</span></div>
+        <div class="task-row"><span class="task-num">2.4</span><span class="task-text">Write summarizer agent: reads Kuzu + VictoriaMetrics → generates NL snapshot → writes to Chroma</span><span class="task-tag" style="background:var(--amber-50);color:var(--amber-800)">Code</span></div>
+        <div class="task-row"><span class="task-num">2.5</span><span class="task-text">Build system prompt template: topology skeleton (compact, static) + dynamic retrieved context</span><span class="task-tag" style="background:var(--purple-50);color:var(--purple-800)">Design</span></div>
+        <div class="task-row"><span class="task-num">2.6</span><span class="task-text">Test query battery: "list hosts", "what's on port 22", "what changed today", "is X reachable from Y"</span><span class="task-tag" style="background:var(--green-50);color:var(--green-800)">Test</span></div>
+        <div class="task-row"><span class="task-num">2.7</span><span class="task-text">Build simple CLI query interface (Python click or bare argparse)</span><span class="task-tag" style="background:var(--amber-50);color:var(--amber-800)">Code</span></div>
+        <h4>Deliverables</h4>
+        <p style="font-size:13px;color:var(--color-text-secondary)">Can ask "what hosts are on VLAN 10?" and get an accurate LLM-synthesized answer from live graph data. Context stays under 4k tokens per query.</p>
+      </div>
+    </div>
+
+    <div class="phase-card">
+      <div class="phase-header" onclick="togglePhase('p3')">
+        <div class="phase-dot" style="background:var(--amber-600)"></div>
+        <div class="phase-title">Phase 3 — Proactive Alerting</div>
+        <div class="phase-meta">Weeks 7–9</div>
+        <div class="phase-arrow" id="arr-p3">▶</div>
+      </div>
+      <div class="phase-body" id="body-p3">
+        <h4>Goal</h4>
+        <p style="font-size:13px;color:var(--color-text-secondary);margin-bottom:8px">Add the anomaly detection agent that watches for deviations and pre-diagnoses issues before they escalate.</p>
+        <h4>Tasks</h4>
+        <div class="task-row"><span class="task-num">3.1</span><span class="task-text">Define baselines: establish rolling-window normal ranges for key metrics per host (latency, packet loss, port state)</span><span class="task-tag" style="background:var(--purple-50);color:var(--purple-800)">Design</span></div>
+        <div class="task-row"><span class="task-num">3.2</span><span class="task-text">Build anomaly detector: continuously queries VictoriaMetrics, flags deviations > N sigma</span><span class="task-tag" style="background:var(--amber-50);color:var(--amber-800)">Code</span></div>
+        <div class="task-row"><span class="task-num">3.3</span><span class="task-text">On anomaly: auto-trigger LLM reasoning — "given this deviation on host X, what are likely causes and affected services?"</span><span class="task-tag" style="background:var(--amber-50);color:var(--amber-800)">Code</span></div>
+        <div class="task-row"><span class="task-num">3.4</span><span class="task-text">Write anomaly report + LLM diagnosis back to Chroma with timestamp and severity tag</span><span class="task-tag" style="background:var(--amber-50);color:var(--amber-800)">Code</span></div>
+        <div class="task-row"><span class="task-num">3.5</span><span class="task-text">Build "show me recent anomalies" query path through LlamaIndex</span><span class="task-tag" style="background:var(--amber-50);color:var(--amber-800)">Code</span></div>
+        <div class="task-row"><span class="task-num">3.6</span><span class="task-text">Tune false positive rate: adjust thresholds and add device-specific baseline overrides</span><span class="task-tag" style="background:var(--green-50);color:var(--green-800)">Test</span></div>
+        <h4>Deliverables</h4>
+        <p style="font-size:13px;color:var(--color-text-secondary)">System autonomously detects and pre-diagnoses anomalies. Stored diagnoses queryable later: "what happened on the switch last Tuesday?"</p>
+      </div>
+    </div>
+
+    <div class="phase-card">
+      <div class="phase-header" onclick="togglePhase('p4')">
+        <div class="phase-dot" style="background:var(--coral-600)"></div>
+        <div class="phase-title">Phase 4 — Integrations & UI</div>
+        <div class="phase-meta">Weeks 10–14</div>
+        <div class="phase-arrow" id="arr-p4">▶</div>
+      </div>
+      <div class="phase-body" id="body-p4">
+        <h4>Goal</h4>
+        <p style="font-size:13px;color:var(--color-text-secondary);margin-bottom:8px">Connect Grafana, Slack, and Obsidian. Add a chat web interface for interactive Q&A.</p>
+        <h4>Tasks</h4>
+        <div class="task-row"><span class="task-num">4.1</span><span class="task-text">Grafana: build dashboards consuming VictoriaMetrics. Add annotation agent that writes LLM diagnoses as Grafana annotations</span><span class="task-tag" style="background:var(--coral-50);color:var(--coral-800)">Integration</span></div>
+        <div class="task-row"><span class="task-num">4.2</span><span class="task-text">Slack: alerting webhook — anomalies above threshold trigger Slack message with LLM diagnosis and severity</span><span class="task-tag" style="background:var(--coral-50);color:var(--coral-800)">Integration</span></div>
+        <div class="task-row"><span class="task-num">4.3</span><span class="task-text">Slack bot: optionally answer @netwatch queries from Slack (thin wrapper around LlamaIndex query engine)</span><span class="task-tag" style="background:var(--coral-50);color:var(--coral-800)">Integration</span></div>
+        <div class="task-row"><span class="task-num">4.4</span><span class="task-text">Obsidian: nightly export agent — write device inventory, recent anomalies, and topology summary to Obsidian vault as markdown</span><span class="task-tag" style="background:var(--coral-50);color:var(--coral-800)">Integration</span></div>
+        <div class="task-row"><span class="task-num">4.5</span><span class="task-text">Web UI: minimal chat interface (FastAPI + HTMX or Open WebUI fork) for interactive query sessions</span><span class="task-tag" style="background:var(--amber-50);color:var(--amber-800)">Code</span></div>
+        <div class="task-row"><span class="task-num">4.6</span><span class="task-text">Additional collectors: SNMP traps, Netflow/sFlow, SSH-based config snapshots for managed switches</span><span class="task-tag" style="background:var(--teal-50);color:var(--teal-800)">Infra</span></div>
+        <h4>Deliverables</h4>
+        <p style="font-size:13px;color:var(--color-text-secondary)">Full operational loop: collect → store → summarize → detect → alert → visualize → document. Multiple query surfaces (CLI, Slack, web UI, Obsidian).</p>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- INTEGRATIONS -->
+  <div id="tab-integrations" class="section">
+    <p style="font-size:13px;color:var(--color-text-secondary);margin-bottom:1rem">All integrations are designed as thin adapters — they consume the existing LlamaIndex query engine or push to/from the storage layer. None require changes to the core architecture.</p>
+    <div class="int-grid">
+      <div class="int-card">
+        <div class="tool-name">Grafana</div>
+        <div class="tool-phase"><span class="badge" style="background:var(--coral-50);color:var(--coral-800);">Phase 4</span></div>
+        <div class="tool-desc">Dashboards from VictoriaMetrics. Annotation agent writes LLM diagnoses as Grafana annotations, so anomalies show in-context on metric graphs.</div>
+      </div>
+      <div class="int-card">
+        <div class="tool-name">Slack</div>
+        <div class="tool-phase"><span class="badge" style="background:var(--coral-50);color:var(--coral-800);">Phase 4</span></div>
+        <div class="tool-desc">Webhook for threshold alerts with LLM diagnosis. Optional bot for @netwatch queries direct from Slack channels.</div>
+      </div>
+      <div class="int-card">
+        <div class="tool-name">Obsidian</div>
+        <div class="tool-phase"><span class="badge" style="background:var(--coral-50);color:var(--coral-800);">Phase 4</span></div>
+        <div class="tool-desc">Nightly export: device inventory, anomaly history, topology changes → markdown files in vault. Living runbook auto-generated.</div>
+      </div>
+      <div class="int-card">
+        <div class="tool-name">Prometheus</div>
+        <div class="tool-phase"><span class="badge" style="background:var(--blue-50);color:var(--blue-800);">Phase 1</span></div>
+        <div class="tool-desc">Node exporters on Linux hosts feed VictoriaMetrics (Prometheus-compatible scrape endpoint). Zero additional config needed.</div>
+      </div>
+      <div class="int-card">
+        <div class="tool-name">Open WebUI</div>
+        <div class="tool-phase"><span class="badge" style="background:var(--coral-50);color:var(--coral-800);">Phase 4</span></div>
+        <div class="tool-desc">Chat interface for interactive NL queries. Can be forked or used as-is with custom system prompt wired to LlamaIndex backend.</div>
+      </div>
+      <div class="int-card">
+        <div class="tool-name">n8n</div>
+        <div class="tool-phase"><span class="badge" style="background:var(--amber-50);color:var(--amber-800);">Phase 3</span></div>
+        <div class="tool-desc">Workflow automation for complex alert routing — multi-channel notification, escalation logic, incident ticketing without custom code.</div>
+      </div>
+      <div class="int-card">
+        <div class="tool-name">Netdata</div>
+        <div class="tool-phase"><span class="badge" style="background:var(--teal-50);color:var(--teal-800);">Phase 2</span></div>
+        <div class="tool-desc">Per-host real-time metrics with built-in anomaly detection. Can augment VictoriaMetrics baseline data or replace node exporters.</div>
+      </div>
+      <div class="int-card">
+        <div class="tool-name">OpenClaw</div>
+        <div class="tool-phase"><span class="badge" style="background:var(--blue-50);color:var(--blue-800);">Phase 2</span></div>
+        <div class="tool-desc">Already running at :18789. LlamaIndex connects here. Acts as model gateway — swap underlying model without changing query code.</div>
+      </div>
+    </div>
+
+    <div style="margin-top:1.5rem">
+      <div class="note-box" style="border-color:var(--blue-600);background:var(--blue-50);">
+        <strong style="color:var(--blue-800);">Integration design rule</strong>
+        <span style="color:var(--blue-800);">Every integration reads from or writes to the same three stores (Kuzu, VictoriaMetrics, Chroma). No integration gets direct LLM access — all LLM calls go through the LlamaIndex query engine. This keeps the reasoning path auditable and consistent.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- RISKS -->
+  <div id="tab-risks" class="section">
+    <div style="margin-bottom:1rem">
+      <div class="risk-row">
+        <div class="risk-sev" style="background:var(--coral-50);color:var(--coral-800);">HIGH</div>
+        <div class="risk-text">
+          <div style="font-weight:500">Schema underdesign in Phase 1 causes migration pain later</div>
+          <div class="risk-mit">Mitigation: invest extra time in 1.1. Model for future use cases (VLAN membership, firewall rules, BGP peers) even before you collect that data. Schema changes in graph DBs are less painful than SQL but still disruptive.</div>
+        </div>
+      </div>
+      <div class="risk-row">
+        <div class="risk-sev" style="background:var(--coral-50);color:var(--coral-800);">HIGH</div>
+        <div class="risk-text">
+          <div style="font-weight:500">LLM hallucination on network facts</div>
+          <div class="risk-mit">Mitigation: always ground answers in retrieved data, never rely on LLM training knowledge for facts about your network. Add a citation step: every answer must cite its Kuzu/Chroma source.</div>
+        </div>
+      </div>
+      <div class="risk-row">
+        <div class="risk-sev" style="background:var(--amber-50);color:var(--amber-800);">MED</div>
+        <div class="risk-text">
+          <div style="font-weight:500">Anomaly alert fatigue from poorly tuned thresholds</div>
+          <div class="risk-mit">Mitigation: start with conservative thresholds (3-sigma), tune per-device over 2 weeks of baseline data before enabling notifications. Add severity tiers.</div>
+        </div>
+      </div>
+      <div class="risk-row">
+        <div class="risk-sev" style="background:var(--amber-50);color:var(--amber-800);">MED</div>
+        <div class="risk-text">
+          <div style="font-weight:500">Context window management complexity grows with network size</div>
+          <div class="risk-mit">Mitigation: the summarizer/compressor layer is the correct solution. Invest in it in Phase 2. Hard-cap retrieved context at 3500 tokens, leaving buffer for system prompt and output.</div>
+        </div>
+      </div>
+      <div class="risk-row">
+        <div class="risk-sev" style="background:var(--amber-50);color:var(--amber-800);">MED</div>
+        <div class="risk-text">
+          <div style="font-weight:500">nmap / SNMP scans causing network disruption</div>
+          <div class="risk-mit">Mitigation: use nmap -T2 (polite timing), schedule during low-traffic windows, whitelist in firewall rules, use passive ARP/CDP where possible for discovery.</div>
+        </div>
+      </div>
+      <div class="risk-row">
+        <div class="risk-sev" style="background:var(--green-50);color:var(--green-800);">LOW</div>
+        <div class="risk-text">
+          <div style="font-weight:500">deepseek-r1:14b too slow for real-time anomaly reasoning on phoenix</div>
+          <div class="risk-mit">Mitigation: anomaly reasoning is async (not user-facing), so latency is acceptable. For interactive queries, use qwen2.5-coder which is faster. Profile in Phase 2 and switch models if needed.</div>
+        </div>
+      </div>
+      <div class="risk-row">
+        <div class="risk-sev" style="background:var(--green-50);color:var(--green-800);">LOW</div>
+        <div class="risk-text">
+          <div style="font-weight:500">Kuzu lack of community resources compared to Neo4j</div>
+          <div class="risk-mit">Mitigation: Kuzu's Cypher dialect is close to Neo4j's. If blockers arise, Neo4j Community Edition is a drop-in replacement. Design the query layer with an abstraction that allows swapping.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TIMELINE -->
+  <div id="tab-timeline" class="section">
+    <div style="margin-bottom:1rem">
+      <div class="timeline-row">
+        <div class="tl-phase" style="background:var(--teal-50);color:var(--teal-800);">Phase 1</div>
+        <div class="tl-dur">Weeks 1–3</div>
+        <div class="tl-bar-wrap"><div class="tl-bar" style="width:21%;background:var(--teal-600)"></div></div>
+        <div class="tl-name" style="color:var(--teal-800)">Data foundation</div>
+      </div>
+      <div class="timeline-row">
+        <div class="tl-phase" style="background:var(--blue-50);color:var(--blue-800);">Phase 2</div>
+        <div class="tl-dur">Weeks 4–6</div>
+        <div class="tl-bar-wrap"><div class="tl-bar" style="width:43%;background:var(--blue-600)"></div></div>
+        <div class="tl-name" style="color:var(--blue-800)">Query interface</div>
+      </div>
+      <div class="timeline-row">
+        <div class="tl-phase" style="background:var(--amber-50);color:var(--amber-800);">Phase 3</div>
+        <div class="tl-dur">Weeks 7–9</div>
+        <div class="tl-bar-wrap"><div class="tl-bar" style="width:64%;background:var(--amber-600)"></div></div>
+        <div class="tl-name" style="color:var(--amber-800)">Proactive alerts</div>
+      </div>
+      <div class="timeline-row">
+        <div class="tl-phase" style="background:var(--coral-50);color:var(--coral-800);">Phase 4</div>
+        <div class="tl-dur">Weeks 10–14</div>
+        <div class="tl-bar-wrap"><div class="tl-bar" style="width:100%;background:var(--coral-600)"></div></div>
+        <div class="tl-name" style="color:var(--coral-800)">Integrations</div>
+      </div>
+    </div>
+
+    <div style="border:0.5px solid var(--color-border-tertiary);border-radius:8px;overflow:hidden;margin-bottom:1rem;">
+      <div style="background:var(--color-background-secondary);padding:8px 12px;font-size:12px;font-weight:500;color:var(--color-text-secondary)">Recommended starting stack (Phase 1 day 1)</div>
+      <div style="padding:10px 12px;font-size:13px;font-family:var(--font-mono,monospace);color:var(--color-text-secondary);line-height:1.8">
+        docker run -d --name kuzu -v ./kuzu-data:/data kuzudb/kuzu:latest<br>
+        docker run -d --name victoria -p 8428:8428 -v ./vm-data:/storage victoriametrics/victoria-metrics<br>
+        docker run -d --name chroma -p 8000:8000 -v ./chroma-data:/chroma/chroma chromadb/chroma<br>
+        pip install kuzu llama-index chromadb llamaindex-llms-ollama
+      </div>
+    </div>
+
+    <div class="note-box" style="border-color:var(--gray-200);background:var(--gray-50);">
+      <strong style="color:var(--gray-800);">Timeline is a guide, not a deadline</strong>
+      <span style="color:var(--gray-600);">Each phase has a clear "done" criterion. Don't advance until the criterion is met — a solid Phase 1 foundation is worth an extra week. Phase 4 integrations can be done incrementally in any order based on what you need most.</span>
+    </div>
+  </div>
+</div>
+
+<script>
+function showTab(id) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');
+  event.target.classList.add('active');
+}
+function togglePhase(id) {
+  const body = document.getElementById('body-'+id);
+  const arr = document.getElementById('arr-'+id);
+  const open = body.classList.contains('open');
+  body.classList.toggle('open', !open);
+  arr.classList.toggle('open', !open);
+}
+</script>
