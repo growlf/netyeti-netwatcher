@@ -93,10 +93,10 @@ def run_scan():
         print("[Nmap] Could not determine any subnets to scan. Skipping auto-discovery.")
         return
     
-    print(f"[Nmap] Scanning subnets: {all_subnets}. Checking for open ports 22, 80, 443, 5380, 8006, 8291...")
+    print(f"[Nmap] Scanning subnets: {all_subnets}. Checking for open ports 22, 80, 443, 5380, 8006, 8291, 11434...")
     output_file = "/app/collected_facts/nmap_discovery.xml"
     
-    cmd = ["nmap", "-p", "22,80,443,5380,8006,8291"] + all_subnets + ["-oX", output_file]
+    cmd = ["nmap", "-p", "22,80,443,5380,8006,8291,11434"] + all_subnets + ["-oX", output_file]
     result = subprocess.run(cmd, capture_output=True, text=True)
     
     if result.returncode == 0:
