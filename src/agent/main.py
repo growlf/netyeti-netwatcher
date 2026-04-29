@@ -265,12 +265,36 @@ async def dashboard(request: Request):
             if not f.endswith(".pub") and os.path.isfile(os.path.join("/root/.ssh", f)):
                 ssh_keys.append(f"/root/.ssh/{f}")
                 
+    # Group devices
+    infrastructure_networks = {}
+    endpoint_devices = []
+    
+    for device in devices:
+        # Determine subnet
+        ip_str = device.get('ip', '')
+        parts = ip_str.split('.')
+        if len(parts) == 4:
+            subnet = f"{parts[0]}.{parts[1]}.{parts[2]}.0/24"
+        else:
+            subnet = "Unknown"
+            
+        is_infrastructure = device.get('is_mikrotik') or device.get('is_proxmox') or device.get('is_dns') or device.get('has_creds')
+        
+        if is_infrastructure:
+            if subnet not in infrastructure_networks:
+                infrastructure_networks[subnet] = []
+            infrastructure_networks[subnet].append(device)
+        else:
+            endpoint_devices.append(device)
+                
     return templates.TemplateResponse(
         request=request,
         name="dashboard.html", 
         context={
             "request": request, 
             "devices": devices,
+            "infrastructure_networks": infrastructure_networks,
+            "endpoint_devices": endpoint_devices,
             "ssh_keys": ssh_keys
         }
     )
@@ -383,6 +407,36 @@ async def proxmox_dashboard(request: Request, ip: str):
         }
     )
 
+import re
+def parse_routeros_print(text):
+    items = []
+    current_item = {}
+    for line in text.strip().split("\n"):
+        line = line.strip()
+        if not line:
+            if current_item:
+                items.append(current_item)
+                current_item = {}
+            continue
+        m = re.match(r'^(\d+)\s+([A-Z\s]*)\s+(.*)', line)
+        if m:
+            if current_item:
+                items.append(current_item)
+                current_item = {}
+            flags = m.group(2).strip()
+            if 'R' in flags: current_item['running'] = 'true'
+            if 'X' in flags: current_item['disabled'] = 'true'
+            line = m.group(3)
+        elif line.startswith(';;;'):
+            continue
+            
+        pairs = re.findall(r'([\w-]+)=(?:"([^"]*)"|(\S+))', line)
+        for k, v1, v2 in pairs:
+            current_item[k] = v1 if v1 else v2
+    if current_item:
+        items.append(current_item)
+    return items
+
 @app.get("/device/{ip}", response_class=HTMLResponse)
 async def device_dashboard(request: Request, ip: str):
     creds_file = f"/app/config/host_vars/{ip}.yml"
@@ -432,6 +486,7 @@ async def device_dashboard(request: Request, ip: str):
     interfaces = []
     error = None
     
+    # Try RouterOS API first (works well for v6)
     try:
         connection = routeros_api.RouterOsApiPool(
             ip, 
@@ -443,23 +498,55 @@ async def device_dashboard(request: Request, ip: str):
         
         try:
             dhcp_leases = api.get_resource('/ip/dhcp-server/lease').get()
-        except Exception as e:
-            print(f"Error fetching DHCP: {e}")
+        except Exception:
+            pass
             
         try:
             dns_cache = api.get_resource('/ip/dns/cache').get()
             dns_cache = [d for d in dns_cache if 'name' in d and 'data' in d]
-        except Exception as e:
-            print(f"Error fetching DNS: {e}")
+        except Exception:
+            pass
             
         try:
             interfaces = api.get_resource('/interface').get()
-        except Exception as e:
-            print(f"Error fetching Interfaces: {e}")
+        except Exception:
+            pass
             
         connection.disconnect()
     except Exception as e:
         error = str(e)
+        
+    # Fallback to SSH (Paramiko) if API failed or returned empty (common for v7)
+    if error or not interfaces:
+        try:
+            import paramiko
+            ssh = paramiko.SSHClient()
+            ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            
+            # Connect using key if available, else password
+            if 'ansible_ssh_private_key_file' in creds:
+                ssh.connect(ip, username=creds.get('ansible_user', 'admin'), key_filename=creds['ansible_ssh_private_key_file'], look_for_keys=False, allow_agent=False)
+            else:
+                ssh.connect(ip, username=creds.get('ansible_user', 'admin'), password=creds.get('ansible_password', ''), look_for_keys=False, allow_agent=False)
+            
+            error = None # Clear error since SSH connected
+            
+            # Fetch Interfaces
+            _, stdout, _ = ssh.exec_command("/interface print detail")
+            interfaces = parse_routeros_print(stdout.read().decode())
+            
+            # Fetch DHCP
+            _, stdout, _ = ssh.exec_command("/ip dhcp-server lease print detail")
+            dhcp_leases = parse_routeros_print(stdout.read().decode())
+            
+            # Fetch DNS Cache
+            _, stdout, _ = ssh.exec_command("/ip dns cache print detail")
+            dns_cache = parse_routeros_print(stdout.read().decode())
+            
+            ssh.close()
+        except Exception as ssh_e:
+            if not interfaces:
+                error = f"API Error: {error} | SSH Error: {str(ssh_e)}"
         
     return templates.TemplateResponse(
         request=request,

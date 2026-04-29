@@ -31,9 +31,21 @@
         </nav>
 
         {% if error %}
-        <div class="bg-red-900/50 border border-red-500 text-red-200 px-4 py-3 rounded relative mb-6" role="alert">
-            <strong class="font-bold">API Connection Error!</strong>
-            <span class="block sm:inline">{{ error }}</span>
+        <div class="bg-red-900/50 border border-red-500 text-red-200 px-6 py-4 rounded-lg relative mb-6 shadow-lg" role="alert">
+            <strong class="font-bold text-lg mb-2 block flex items-center gap-2">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                API Connection Error
+            </strong>
+            <span class="block mb-4 font-mono text-sm bg-black/30 p-2 rounded">{{ error }}</span>
+            
+            <div class="bg-black/40 p-4 rounded border border-red-500/30 text-sm">
+                <p class="font-semibold text-red-300 mb-2">Troubleshooting Tips:</p>
+                <ul class="list-disc pl-5 space-y-1.5">
+                    <li><strong>API Service Disabled:</strong> NetWatch requires the RouterOS API (port 8728) to be enabled. Open WebFig or use SSH and run: <code class="bg-black/50 px-1 py-0.5 rounded text-sky-300 font-mono">/ip service enable api</code></li>
+                    <li><strong>Invalid Credentials:</strong> Verify the credentials provided in the Dashboard's Configure modal are correct.</li>
+                    <li><strong>Refresh Data:</strong> Once the issue is resolved on the router, click the <strong>Refresh Data</strong> button above to pull the latest interfaces and leases.</li>
+                </ul>
+            </div>
         </div>
         {% endif %}
 
