@@ -15,19 +15,78 @@
         .gradient-text { background: linear-gradient(90deg, #38bdf8, #818cf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         
         /* Dark Mode overrides for simple-datatables */
-        .dataTable-wrapper { color: #f8fafc; }
-        .dataTable-top, .dataTable-bottom { padding: 1rem 0; }
-        .dataTable-input { background-color: #1e293b; border: 1px solid #475569; color: white; border-radius: 0.375rem; padding: 0.5rem 0.75rem; }
-        .dataTable-selector { background-color: #1e293b; border: 1px solid #475569; color: white; border-radius: 0.375rem; padding: 0.375rem 0.75rem; }
-        .dataTable-table > thead > tr > th { border-bottom: 1px solid #334155; }
-        .dataTable-table > tbody > tr > td { border-bottom: 1px solid #1e293b; }
-        .dataTable-info { color: #94a3b8; }
-        .dataTable-pagination a { color: #cbd5e1; border: 1px solid #334155; border-radius: 0.25rem; background-color: #1e293b; }
-        .dataTable-pagination a:hover { background-color: #334155; color: white; }
-        .dataTable-pagination .active a, .dataTable-pagination .active a:hover { background-color: #0ea5e9; color: white; border-color: #0ea5e9; }
+        body .dataTable-wrapper { color: #f8fafc; }
+        body .dataTable-top, body .dataTable-bottom { padding: 1rem 0; }
+        
+        /* Inputs & Selectors */
+        body .dataTable-input, body .dataTable-selector {
+            background-color: #1e293b;
+            border: 1px solid #475569;
+            color: #f8fafc;
+            border-radius: 0.375rem;
+            outline: none;
+            color-scheme: dark;
+        }
+        body .dataTable-selector option {
+            background-color: #1e293b;
+            color: #f8fafc;
+        }
+        body .dataTable-input { padding: 0.5rem 0.75rem; }
+        body .dataTable-selector {
+            padding: 0.375rem 2.5rem 0.375rem 0.75rem;
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%239ca3af' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+            background-position: right 0.5rem center;
+            background-repeat: no-repeat;
+            background-size: 1.25em 1.25em;
+        }
+        
+        /* Table Structure */
+        body .dataTable-table > thead > tr > th { border-bottom: 1px solid #334155; }
+        body .dataTable-table > tbody > tr > td { border-bottom: 1px solid #1e293b; }
+        body .dataTable-info { color: #94a3b8; }
+        
+        /* Pagination */
+        body .dataTable-pagination a { color: #cbd5e1; border: 1px solid #334155; border-radius: 0.25rem; background-color: #1e293b; }
+        body .dataTable-pagination a:hover { background-color: #334155; color: white; }
+        body .dataTable-pagination .active a, body .dataTable-pagination .active a:hover { background-color: #0284c7; color: white; border-color: #0284c7; }
+        
+        /* Light Theme Overrides */
+        body.light-theme { background-color: #f8fafc; color: #0f172a; }
+        body.light-theme .glass-panel { background: rgba(255, 255, 255, 0.85); border-color: rgba(0, 0, 0, 0.1); }
+        body.light-theme .text-white { color: #0f172a; }
+        body.light-theme .text-slate-400 { color: #475569; }
+        body.light-theme .text-slate-300 { color: #334155; }
+        body.light-theme .bg-slate-800 { background-color: #f1f5f9; }
+        body.light-theme .bg-slate-800\/50 { background-color: rgba(241, 245, 249, 0.5); }
+        body.light-theme .hover\:bg-slate-800:hover { background-color: #e2e8f0; }
+        body.light-theme .border-slate-700 { border-color: #cbd5e1; }
+        body.light-theme .border-slate-700\/50 { border-color: rgba(203, 213, 225, 0.5); }
+        body.light-theme .bg-slate-700 { background-color: #e2e8f0; color: #0f172a; }
+        body.light-theme .hover\:bg-slate-600:hover { background-color: #cbd5e1; }
+        
+        /* Light Theme DataTables */
+        body.light-theme .dataTable-wrapper { color: #0f172a; }
+        body.light-theme .dataTable-input, body.light-theme .dataTable-selector { background-color: #ffffff; border-color: #cbd5e1; color: #0f172a; color-scheme: light; }
+        body.light-theme .dataTable-selector option { background-color: #ffffff; color: #0f172a; }
+        body.light-theme .dataTable-table > thead > tr > th { border-bottom-color: #cbd5e1; }
+        body.light-theme .dataTable-table > tbody > tr > td { border-bottom-color: #e2e8f0; }
+        body.light-theme .dataTable-pagination a { background-color: #ffffff; border-color: #cbd5e1; color: #475569; }
+        body.light-theme .dataTable-pagination a:hover { background-color: #f1f5f9; color: #0f172a; }
+        body.light-theme .dataTable-pagination .active a, body.light-theme .dataTable-pagination .active a:hover { background-color: #0ea5e9; color: white; border-color: #0ea5e9; }
     </style>
+    <script>
+        if (localStorage.getItem('theme') === 'light') {
+            document.documentElement.classList.add('light-theme');
+        }
+    </script>
 </head>
 <body class="min-h-screen p-8">
+    <script>
+        if (localStorage.getItem('theme') === 'light') { document.body.classList.add('light-theme'); }
+    </script>
 
     <div class="max-w-7xl mx-auto">
         <!-- Top Nav -->
@@ -50,12 +109,17 @@
                     </a>
                 </div>
             </div>
-            <div class="text-xs text-slate-400 flex items-center gap-2">
-                <span class="relative flex h-2 w-2">
-                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span>
-                  <span class="relative inline-flex rounded-full h-2 w-2 bg-sky-500"></span>
-                </span>
-                Agent Active
+            <div class="text-xs text-slate-400 flex items-center gap-4">
+                <button onclick="toggleTheme()" class="px-2 py-1 rounded bg-slate-800 border border-slate-700 hover:bg-slate-700 transition-colors flex items-center gap-1" title="Toggle Theme">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+                </button>
+                <div class="flex items-center gap-2">
+                    <span class="relative flex h-2 w-2">
+                      <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span>
+                      <span class="relative inline-flex rounded-full h-2 w-2 bg-sky-500"></span>
+                    </span>
+                    Agent Active
+                </div>
             </div>
         </nav>
 
@@ -129,20 +193,22 @@
                                         {% endif %}
                                     </td>
                                     <td class="py-4 px-4 text-center">
-                                        <button onclick="document.getElementById('details-modal-{{ device.ip | replace('.', '-') }}').classList.remove('hidden')" 
-                                                class="bg-slate-700 hover:bg-slate-600 text-white text-sm font-medium py-1 px-3 rounded shadow transition-colors mr-2">
-                                            Details
-                                        </button>
-                                        {% if device.has_creds or (device.is_dns and not device.is_proxmox) %}
-                                        <a href="{% if device.is_proxmox %}/proxmox/{{ device.ip }}{% elif device.is_mikrotik %}/device/{{ device.ip }}{% else %}http://{{ device.ip }}:5380{% endif %}" {% if device.is_dns and not device.is_proxmox %}target="_blank"{% endif %} class="bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium py-1 px-3 rounded shadow transition-colors inline-block">
-                                            Manage
-                                        </a>
-                                        {% else %}
-                                        <button onclick="document.getElementById('modal-{{ device.ip | replace('.', '-') }}').classList.remove('hidden')" 
-                                                class="bg-sky-600 hover:bg-sky-500 text-white text-sm font-medium py-1 px-3 rounded shadow transition-colors">
-                                            Configure
-                                        </button>
-                                        {% endif %}
+                                        <div class="flex items-center justify-center gap-2">
+                                            <button onclick="document.getElementById('details-modal-{{ device.ip | replace('.', '-') }}').classList.remove('hidden')" 
+                                                    class="bg-slate-700 hover:bg-slate-600 text-white p-1.5 rounded shadow transition-colors" title="View Details">
+                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                            </button>
+                                            {% if device.has_creds or (device.is_dns and not device.is_proxmox) %}
+                                            <a href="{% if device.is_proxmox %}/proxmox/{{ device.ip }}{% elif device.is_mikrotik %}/device/{{ device.ip }}{% else %}http://{{ device.ip }}:5380{% endif %}" {% if device.is_dns and not device.is_proxmox %}target="_blank"{% endif %} class="bg-emerald-600 hover:bg-emerald-500 text-white p-1.5 rounded shadow transition-colors" title="Manage Device">
+                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" /></svg>
+                                            </a>
+                                            {% else %}
+                                            <button onclick="document.getElementById('modal-{{ device.ip | replace('.', '-') }}').classList.remove('hidden')" 
+                                                    class="bg-sky-600 hover:bg-sky-500 text-white p-1.5 rounded shadow transition-colors" title="Configure Credentials">
+                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                            </button>
+                                            {% endif %}
+                                        </div>
                                     </td>
                                 </tr>
                                 {% endfor %}
@@ -166,7 +232,7 @@
                                     <th class="py-3 px-4 font-semibold">IP Address</th>
                                     <th class="py-3 px-4 font-semibold">MAC Address</th>
                                     <th class="py-3 px-4 font-semibold">Detected Vendor</th>
-                                    <th class="py-3 px-4 font-semibold" data-sortable="false">Details</th>
+                                    <th class="py-3 px-4 font-semibold text-center" data-sortable="false">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -182,10 +248,10 @@
                                     <td class="py-4 px-4 text-slate-300 text-sm">
                                         {{ device.vendor }}
                                     </td>
-                                    <td class="py-4 px-4">
+                                    <td class="py-4 px-4 text-center">
                                         <button onclick="document.getElementById('details-modal-{{ device.ip | replace('.', '-') }}').classList.remove('hidden')" 
-                                                class="bg-slate-700 hover:bg-slate-600 text-white text-xs font-medium py-1 px-3 rounded shadow transition-colors">
-                                            View Details
+                                                class="bg-slate-700 hover:bg-slate-600 text-white p-1.5 rounded shadow transition-colors inline-block" title="View Details">
+                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                                         </button>
                                     </td>
                                 </tr>
@@ -342,15 +408,20 @@
             tables.forEach(table => {
                 new simpleDatatables.DataTable(table, {
                     searchable: true,
-                    fixedHeight: true,
                     perPage: 15,
-                    perPageSelect: [15, 25, 50, 100],
+                    perPageSelect: [15, 25, 50, 100, 500],
                     classes: {
                         active: "active",
                     }
                 });
             });
         });
+
+        function toggleTheme() {
+            document.body.classList.toggle('light-theme');
+            const isLight = document.body.classList.contains('light-theme');
+            localStorage.setItem('theme', isLight ? 'light' : 'dark');
+        }
     </script>
 </body>
 </html>

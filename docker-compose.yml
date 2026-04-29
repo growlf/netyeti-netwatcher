@@ -37,7 +37,8 @@ services:
     restart: unless-stopped
   agent:
     build:
-      context: ./src/agent
+      context: .
+      dockerfile: src/agent/Dockerfile
     container_name: netwatch_agent
     network_mode: host
     volumes:

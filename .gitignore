@@ -19,6 +19,8 @@ ENV/
 
 # Ansible specific
 /config/inventory.yml
+/config/host_vars/*
+!/config/host_vars/.gitkeep
 /collected_facts/
 *.retry
 

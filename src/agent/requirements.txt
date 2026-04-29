@@ -11,3 +11,4 @@ routeros-api
 python-multipart
 proxmoxer
 requests
+pytest

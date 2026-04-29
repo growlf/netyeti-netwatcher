@@ -7,11 +7,15 @@ RUN apt-get update && \
     sshpass openssh-client nmap iproute2 traceroute && \
     rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt .
+COPY src/agent/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 RUN ansible-galaxy collection install community.routeros
 
-COPY . .
+COPY src/agent/ .
+COPY tests/ /tests/
+
+ENV PYTHONPATH=/app
+RUN pytest /tests/unit/
 
 # Ensure config directory exists for mounting
 RUN mkdir -p /app/config /app/collected_facts
