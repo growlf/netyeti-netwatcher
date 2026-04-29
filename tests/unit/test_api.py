@@ -1,6 +1,13 @@
+import sys
+import os
+
 import pytest
 from fastapi.testclient import TestClient
-from main import app
+
+# Ensure the agent source directory is on the path when running tests outside Docker
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "src", "agent"))
+
+from main import app  # noqa: E402
 
 client = TestClient(app)
 
