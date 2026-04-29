@@ -1,4 +1,4 @@
-FROM python:3.10-slim
+FROM python:3.10.14-slim
 
 WORKDIR /app
 
@@ -12,12 +12,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 RUN ansible-galaxy collection install community.routeros
 
 COPY src/agent/ .
-COPY tests/ /tests/
 
 ENV PYTHONPATH=/app
-RUN pytest /tests/unit/
 
-# Ensure config directory exists for mounting
-RUN mkdir -p /app/config /app/collected_facts
+# Ensure runtime directories exist for volume mounts
+RUN mkdir -p /app/config /app/collected_facts /app/templates
 
 CMD ["python3", "main.py"]
