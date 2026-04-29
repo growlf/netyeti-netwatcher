@@ -32,7 +32,7 @@ The system is built on a 100% local, self-hosted architecture consisting of:
 - **Telemetry Agents**: Python agents and Ansible (`get_facts.yml`) for host node and interface discovery.
 
 For a detailed breakdown of the architecture, goals, and project phases, please refer to the comprehensive project plan:
-👉 **[docs/netwatch_ai_project_plan.html](docs/netwatch_ai_project_plan.html)**
+👉 **[docs/netwatch_ai_project_plan.md](docs/netwatch_ai_project_plan.md)**
 
 ---
 
