@@ -40,7 +40,7 @@ def get_local_subnet() -> str | None:
         addr_out = subprocess.check_output(f"ip -o -f inet addr show {iface}", shell=True, text=True)
         cidr = addr_out.strip().split()[3]
 
-        # Normalise to network address (e.g. 192.168.1.10/24 → 192.168.1.0/24)
+        # Normalize to network address (e.g. 192.168.1.10/24 → 192.168.1.0/24)
         net = ipaddress.IPv4Interface(cidr).network
         return str(net)
     except Exception as e:

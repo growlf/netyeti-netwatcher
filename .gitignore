@@ -35,12 +35,12 @@ Thumbs.db
 /docs/task.md
 /task.md
 
-# Python build / packaging artefacts
+# Python build / packaging artifacts
 *.egg-info/
 dist/
 build/
 
-# Test & coverage artefacts
+# Test & coverage artifacts
 .pytest_cache/
 .coverage
 htmlcov/

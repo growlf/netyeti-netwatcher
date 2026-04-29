@@ -4,6 +4,7 @@ NetWatch AI — FastAPI application entry point.
 Serves the web dashboard and device management UI.  The background
 collection agent is started as a daemon thread via the FastAPI lifespan hook.
 """
+import html
 import ipaddress
 import json
 import logging
@@ -34,15 +35,18 @@ logger = logging.getLogger(__name__)
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _validate_ip(ip: str) -> None:
+def _validate_ip(ip: str) -> str:
     """
-    Raise HTTP 400 if *ip* is not a valid IPv4 or IPv6 address.
+    Validate that *ip* is a well-formed IPv4 or IPv6 address and return its
+    canonical string representation.
 
-    This prevents path-traversal attacks where an attacker crafts a URL like
-    ``/device/../../../etc/passwd`` to read arbitrary files from the host.
+    Raises HTTP 400 on invalid input.  Callers **must** use the returned value
+    (not the original parameter) when constructing file paths or shell commands,
+    so that only the canonical IP form — never user-supplied characters like
+    ``../`` — can reach the filesystem.
     """
     try:
-        ipaddress.ip_address(ip)
+        return str(ipaddress.ip_address(ip))
     except ValueError:
         raise HTTPException(status_code=400, detail=f"Invalid IP address: {ip!r}")
 
@@ -51,8 +55,8 @@ def _read_creds(ip: str) -> dict:
     """
     Load a host_vars YAML credential file for *ip*.
 
-    Redirects to ``/`` (via RedirectResponse) when the file does not exist
-    or cannot be parsed, so callers should return the result directly.
+    *ip* must already be validated and canonical (returned by ``_validate_ip``).
+    Returns ``None`` when the file does not exist or cannot be parsed.
     """
     creds_file = os.path.join(config.HOST_VARS_DIR, f"{ip}.yml")
     if not os.path.exists(creds_file):
@@ -62,6 +66,19 @@ def _read_creds(ip: str) -> dict:
             return yaml.safe_load(f)
     except Exception:
         return None
+
+
+def _write_creds_secure(path: str, content: str) -> None:
+    """
+    Write *content* to *path* with permissions ``0600`` atomically.
+
+    Uses ``os.open`` with ``O_CREAT | O_WRONLY | O_TRUNC`` so the file is
+    created with the correct permissions from the start, avoiding the window
+    between ``open()`` and a subsequent ``chmod()`` call.
+    """
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w") as f:
+        f.write(content)
 
 
 def _connect_proxmox(ip: str, creds: dict):
@@ -269,7 +286,7 @@ async def test_ssh(
     password: str = Form(""),
     key_file: str = Form(""),
 ):
-    _validate_ip(ip)
+    ip = _validate_ip(ip)  # returns canonical form; use only this for paths
     try:
         ssh = paramiko.SSHClient()
         # NOTE: AutoAddPolicy silently accepts the remote host's key without
@@ -290,13 +307,14 @@ async def test_ssh(
             os.makedirs(config.HOST_VARS_DIR, exist_ok=True)
             creds_file = os.path.join(config.HOST_VARS_DIR, f"{ip}.yml")
             # NOTE: Credentials are stored in plaintext YAML for Ansible
-            # compatibility.  This file should be readable only by the owner
-            # (mode 0600) and the directory should not be world-readable.
-            with open(creds_file, "w") as f:
-                os.chmod(creds_file, 0o600)
-                f.write(f"ansible_user: {username}\n")
-                f.write(f"ansible_password: {password}\n")
-                f.write("ansible_connection: ansible.netcommon.network_cli\n")
+            # compatibility.  The file is created with mode 0600 so only the
+            # owner can read it.
+            _write_creds_secure(
+                creds_file,
+                f"ansible_user: {username}\n"
+                f"ansible_password: {password}\n"
+                "ansible_connection: ansible.netcommon.network_cli\n",
+            )
         else:
             if not username or not key_file:
                 return HTMLResponse("<div class='text-red-500 mt-2 text-sm'>Username and Key File required.</div>")
@@ -304,23 +322,29 @@ async def test_ssh(
 
             os.makedirs(config.HOST_VARS_DIR, exist_ok=True)
             creds_file = os.path.join(config.HOST_VARS_DIR, f"{ip}.yml")
-            with open(creds_file, "w") as f:
-                os.chmod(creds_file, 0o600)
-                f.write(f"ansible_user: {username}\n")
-                f.write(f"ansible_ssh_private_key_file: {key_file}\n")
-                f.write("ansible_connection: ansible.netcommon.network_cli\n")
+            _write_creds_secure(
+                creds_file,
+                f"ansible_user: {username}\n"
+                f"ansible_ssh_private_key_file: {key_file}\n"
+                "ansible_connection: ansible.netcommon.network_cli\n",
+            )
 
         ssh.close()
-        return HTMLResponse(f"<div class='text-green-500 font-bold mt-2 text-sm'>✓ Success! Credentials saved for {ip}.</div>")
+        return HTMLResponse(
+            f"<div class='text-green-500 font-bold mt-2 text-sm'>✓ Success! Credentials saved for {html.escape(ip)}.</div>"
+        )
     except HTTPException:
         raise
     except Exception as e:
-        return HTMLResponse(f"<div class='text-red-500 font-bold mt-2 text-sm'>✗ Connection failed: {e}</div>")
+        logger.error("[SSH] Connection to %s failed: %s", ip, e)
+        return HTMLResponse(
+            "<div class='text-red-500 font-bold mt-2 text-sm'>✗ Connection failed. Check the agent logs for details.</div>"
+        )
 
 
 @app.get("/proxmox/{ip}", response_class=HTMLResponse)
 async def proxmox_dashboard(request: Request, ip: str):
-    _validate_ip(ip)
+    ip = _validate_ip(ip)
     creds = _read_creds(ip)
     if creds is None:
         return RedirectResponse(url="/")
@@ -359,7 +383,7 @@ async def proxmox_dashboard(request: Request, ip: str):
 
 @app.get("/device/{ip}", response_class=HTMLResponse)
 async def device_dashboard(request: Request, ip: str):
-    _validate_ip(ip)
+    ip = _validate_ip(ip)
     creds = _read_creds(ip)
     if creds is None:
         return RedirectResponse(url="/")
