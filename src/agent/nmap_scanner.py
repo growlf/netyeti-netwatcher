@@ -126,14 +126,17 @@ def run_scan() -> None:
     if not all_subnets:
         logger.warning("[Nmap] Could not determine any subnets to scan. Skipping auto-discovery.")
         return
+    # Ensure we scan localhost to catch services bound only to loopback (like default Ollama)
+    if "127.0.0.1" not in all_subnets:
+        all_subnets.append("127.0.0.1")
 
     logger.info(
-        "[Nmap] Scanning subnets: %s. Checking for open ports 22, 80, 443, 5380, 8006, 8291...",
+        "[Nmap] Scanning subnets: %s. Checking for open ports 22, 80, 443, 5380, 8006, 8291, 11434...",
         all_subnets,
     )
     output_file = os.path.join(config.FACTS_DIR, "nmap_discovery.xml")
 
-    cmd = ["nmap", "-p", "22,80,443,5380,8006,8291"] + all_subnets + ["-oX", output_file]
+    cmd = ["nmap", "-p", "22,80,443,5380,8006,8291,11434"] + all_subnets + ["-oX", output_file]
     result = subprocess.run(cmd, capture_output=True, text=True)
 
     if result.returncode == 0:
