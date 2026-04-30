@@ -1,10 +1,10 @@
 """
 Unit tests for kuzu_loader helper functions.
 """
-import sys
 import os
-import types
+import sys
 import textwrap
+import types
 from unittest.mock import MagicMock
 
 import pytest
