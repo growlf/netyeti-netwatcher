@@ -46,3 +46,5 @@ build/
 htmlcov/
 coverage.xml
 
+# Other sensitive or environment-specific files
+/config/settings.json
