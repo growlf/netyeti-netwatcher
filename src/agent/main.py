@@ -9,8 +9,10 @@ import ipaddress
 import json
 import logging
 import os
+import socket
 import threading
 import xml.etree.ElementTree as ET
+from urllib.parse import urlparse
 
 import paramiko
 import routeros_api
@@ -352,6 +354,36 @@ async def save_llm_config(ollama_url: str = Form(""), ollama_model: str = Form("
         
     return HTMLResponse("<div class='text-green-500 font-bold mt-2 text-sm'>✓ LLM Settings saved successfully.</div>")
 
+def _validate_public_http_url(raw_url: str) -> str:
+    parsed = urlparse(raw_url.strip())
+    if parsed.scheme not in ("http", "https"):
+        raise ValueError("URL must start with http:// or https://")
+    if not parsed.hostname:
+        raise ValueError("URL must include a valid hostname")
+
+    try:
+        addrinfo = socket.getaddrinfo(parsed.hostname, parsed.port or (443 if parsed.scheme == "https" else 80))
+    except socket.gaierror:
+        raise ValueError("Hostname could not be resolved")
+
+    for info in addrinfo:
+        ip_text = info[4][0]
+        ip_obj = ipaddress.ip_address(ip_text)
+        if (
+            ip_obj.is_private
+            or ip_obj.is_loopback
+            or ip_obj.is_link_local
+            or ip_obj.is_multicast
+            or ip_obj.is_reserved
+            or ip_obj.is_unspecified
+        ):
+            raise ValueError("URL resolves to a non-public IP address")
+
+    netloc = parsed.hostname
+    if parsed.port:
+        netloc = f"{netloc}:{parsed.port}"
+    return f"{parsed.scheme}://{netloc}".rstrip("/")
+
 @app.post("/api/config/llm/verify", response_class=HTMLResponse)
 async def verify_llm_config(ollama_url: str = Form("")):
     import requests
@@ -359,7 +391,7 @@ async def verify_llm_config(ollama_url: str = Form("")):
         return HTMLResponse("<div class='text-red-500 text-sm mt-2'>URL is required.</div>")
         
     try:
-        url = ollama_url.rstrip("/")
+        url = _validate_public_http_url(ollama_url)
         resp = requests.get(f"{url}/api/tags", timeout=5)
         if resp.status_code == 200:
             data = resp.json()
@@ -385,6 +417,8 @@ async def verify_llm_config(ollama_url: str = Form("")):
             )
         else:
             return HTMLResponse(f"<div class='text-red-500 text-sm mt-2'>Error: Received status code {resp.status_code}</div>")
+    except ValueError as e:
+        return HTMLResponse(f"<div class='text-red-500 text-sm mt-2'>Invalid URL: {html.escape(str(e))}</div>")
     except Exception as e:
         return HTMLResponse(f"<div class='text-red-500 text-sm mt-2'>Connection failed: {str(e)}</div>")
 
