@@ -32,7 +32,9 @@ def get_db() -> kuzu.Database:
     global _db
     with _lock:
         if _db is None:
-            os.makedirs(os.path.dirname(config.DB_PATH), exist_ok=True)
+            db_dir = os.path.dirname(config.DB_PATH)
+            if db_dir:
+                os.makedirs(db_dir, exist_ok=True)
             logger.info("[KuzuDB] Opening database at %s", config.DB_PATH)
             _db = kuzu.Database(config.DB_PATH)
     return _db
