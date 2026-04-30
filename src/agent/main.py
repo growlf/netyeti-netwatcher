@@ -645,8 +645,13 @@ async def services_dashboard(request: Request, ip: str):
                             elif portid == '8006':
                                 services.append({"name": "Proxmox Web UI", "port": 8006, "url": f"https://{ip}:8006"})
                     break
-        except Exception:
-            pass
+        except (ET.ParseError, OSError, ValueError):
+            logging.warning(
+                "Failed to parse Nmap services data from %s for ip %s",
+                nmap_xml,
+                ip,
+                exc_info=True,
+            )
 
     return templates.TemplateResponse(
         request=request,
