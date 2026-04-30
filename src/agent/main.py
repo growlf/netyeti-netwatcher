@@ -419,8 +419,9 @@ async def verify_llm_config(ollama_url: str = Form("")):
             return HTMLResponse(f"<div class='text-red-500 text-sm mt-2'>Error: Received status code {resp.status_code}</div>")
     except ValueError as e:
         return HTMLResponse(f"<div class='text-red-500 text-sm mt-2'>Invalid URL: {html.escape(str(e))}</div>")
-    except Exception as e:
-        return HTMLResponse(f"<div class='text-red-500 text-sm mt-2'>Connection failed: {str(e)}</div>")
+    except Exception:
+        logging.exception("LLM config verification failed")
+        return HTMLResponse("<div class='text-red-500 text-sm mt-2'>Connection failed. Please verify the URL and try again.</div>")
 
 @app.post("/api/test_ssh", response_class=HTMLResponse)
 async def test_ssh(
