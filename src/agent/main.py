@@ -22,8 +22,10 @@ import yaml
 from fastapi import FastAPI, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
+from pydantic import BaseModel
 
 import config
+from kuzu_tool import query_network
 from agent import agent_loop
 from parsers import parse_routeros_print  # re-exported for backwards-compat with tests
 
@@ -354,21 +356,34 @@ async def save_llm_config(ollama_url: str = Form(""), ollama_model: str = Form("
 
     return HTMLResponse("<div class='text-green-500 font-bold mt-2 text-sm'>✓ LLM Settings saved successfully.</div>")
 
-def _validate_public_http_url(raw_url: str) -> str:
+def _validate_http_url(raw_url: str) -> str:
     parsed = urlparse(raw_url.strip())
     if parsed.scheme not in ("http", "https"):
         raise ValueError("URL must start with http:// or https://")
     if not parsed.hostname:
         raise ValueError("URL must include a valid hostname")
 
+    allowed_hosts_raw = os.getenv("ALLOWED_LLM_HOSTS", "")
+    allowed_hosts = {h.strip().lower() for h in allowed_hosts_raw.split(",") if h.strip()}
+    if not allowed_hosts:
+        raise ValueError("LLM URL verification is not enabled: ALLOWED_LLM_HOSTS is not configured")
+    if parsed.hostname.lower() not in allowed_hosts:
+        raise ValueError("Hostname is not in the allowed LLM host list")
+
     try:
         addrinfo = socket.getaddrinfo(parsed.hostname, parsed.port or (443 if parsed.scheme == "https" else 80))
     except socket.gaierror:
         raise ValueError("Hostname could not be resolved")
 
-    for info in addrinfo:
-        ip_text = info[4][0]
-        ip_obj = ipaddress.ip_address(ip_text)
+    resolved_ips = {item[4][0] for item in addrinfo if item and item[4]}
+    if not resolved_ips:
+        raise ValueError("Hostname could not be resolved")
+
+    for ip_text in resolved_ips:
+        try:
+            ip_obj = ipaddress.ip_address(ip_text)
+        except ValueError:
+            raise ValueError("Hostname resolved to an invalid IP address")
         if (
             ip_obj.is_private
             or ip_obj.is_loopback
@@ -377,7 +392,7 @@ def _validate_public_http_url(raw_url: str) -> str:
             or ip_obj.is_reserved
             or ip_obj.is_unspecified
         ):
-            raise ValueError("URL resolves to a non-public IP address")
+            raise ValueError("Hostname resolves to a non-public IP address, which is not allowed")
 
     netloc = parsed.hostname
     if parsed.port:
@@ -391,35 +406,50 @@ async def verify_llm_config(ollama_url: str = Form("")):
         return HTMLResponse("<div class='text-red-500 text-sm mt-2'>URL is required.</div>")
 
     try:
-        url = _validate_public_http_url(ollama_url)
-        resp = requests.get(f"{url}/api/tags", timeout=5)
-        if resp.status_code == 200:
-            data = resp.json()
-            models = data.get("models", [])
+        url = _validate_http_url(ollama_url)
+        models = []
+        is_openai_format = False
+        
+        # Try OpenAI format first (LiteLLM)
+        try:
+            resp = requests.get(f"{url}/v1/models", timeout=5)
+            if resp.status_code == 200:
+                data = resp.json()
+                models = [{"name": m.get("id", "")} for m in data.get("data", [])]
+                is_openai_format = True
+        except Exception:
+            logging.debug("OpenAI-compatible model probe failed for %s; trying Ollama format fallback", url, exc_info=True)
 
-            if not models:
-                return HTMLResponse(
-                    "<div class='text-amber-500 text-sm mb-2'>Connected, but no models found. You may need to pull a model first.</div>"
-                    "<label class='block text-sm text-slate-400 mb-1'>Default Model Name</label>"
-                    "<input type='text' name='ollama_model' class='w-full bg-slate-800 border border-slate-600 text-white rounded px-3 py-2'>"
-                )
+        # Fallback to Ollama format
+        if not is_openai_format:
+            resp = requests.get(f"{url}/api/tags", timeout=5)
+            if resp.status_code == 200:
+                data = resp.json()
+                models = data.get("models", [])
+            else:
+                return HTMLResponse(f"<div class='text-red-500 text-sm mt-2'>Error: Received status code {resp.status_code}</div>")
 
-            options = "".join(
-                [
-                    f"<option value='{html.escape(str(m.get('name', '')), quote=True)}'>{html.escape(str(m.get('name', '')), quote=True)}</option>"
-                    for m in models
-                ]
-            )
+        if not models:
             return HTMLResponse(
-                f"<div class='text-green-500 text-sm font-bold mb-2'>✓ Connected successfully! Found {len(models)} models.</div>"
-                f"<label class='block text-sm text-slate-400 mb-1'>Default Model Name</label>"
-                f"<select name='ollama_model' class='w-full bg-slate-800 border border-slate-600 text-white rounded px-3 py-2'>{options}</select>"
+                "<div class='text-amber-500 text-sm mb-2'>Connected, but no models found. You may need to pull a model first.</div>"
+                "<label class='block text-sm text-slate-400 mb-1'>Default Model Name</label>"
+                "<input type='text' name='ollama_model' class='w-full bg-slate-800 border border-slate-600 text-white rounded px-3 py-2'>"
             )
-        else:
-            return HTMLResponse(f"<div class='text-red-500 text-sm mt-2'>Error: Received status code {resp.status_code}</div>")
+
+        options = "".join(
+            [
+                f"<option value='{html.escape(str(m.get('name', '')), quote=True)}'>{html.escape(str(m.get('name', '')), quote=True)}</option>"
+                for m in models
+            ]
+        )
+        return HTMLResponse(
+            f"<div class='text-green-500 text-sm font-bold mb-2'>✓ Connected successfully! Found {len(models)} models.</div>"
+            f"<label class='block text-sm text-slate-400 mb-1'>Default Model Name</label>"
+            f"<select name='ollama_model' class='w-full bg-slate-800 border border-slate-600 text-white rounded px-3 py-2'>{options}</select>"
+        )
     except ValueError:
         logging.warning("Invalid LLM URL provided during verification", exc_info=True)
-        return HTMLResponse("<div class='text-red-500 text-sm mt-2'>Invalid URL. Please provide a valid public http(s) URL.</div>")
+        return HTMLResponse("<div class='text-red-500 text-sm mt-2'>Invalid URL. Please provide a valid http(s) URL.</div>")
     except Exception:
         logging.exception("LLM config verification failed")
         return HTMLResponse("<div class='text-red-500 text-sm mt-2'>Connection failed. Please verify the URL and try again.</div>")
@@ -704,6 +734,21 @@ async def services_dashboard(request: Request, ip: str):
             "services": services
         }
     )
+
+class QueryRequest(BaseModel):
+    query: str
+
+@app.post("/api/query/kuzu")
+async def api_query_kuzu(req: QueryRequest):
+    try:
+        answer = query_network(req.query)
+        return {"answer": answer}
+    except Exception:
+        logging.exception("Failed to process Kuzu query")
+        return JSONResponse(
+            status_code=500,
+            content={"error": "An internal error has occurred."},
+        )
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8085)

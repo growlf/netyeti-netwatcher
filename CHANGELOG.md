@@ -10,6 +10,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Kuzu query tool for LlamaIndex: NL → Cypher → structured results (`kuzu_tool.py`)
+- LlamaIndex `FunctionTool` wrapper (`kuzu_query_tool`) for agent integration
+- Network Query panel in dashboard UI (HTMX + `/api/query/kuzu`)
+- Unit tests for `kuzu_tool` (schema, query execution, write-keyword blocking, few-shots, tool metadata)
+
+### Fixed
+- `execute_kuzu_query`: write-keyword safety check now runs before opening the DB connection
+
+### Added
 - `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`, `CHANGELOG.md` for open-source project hygiene.
 - `.github/workflows/ci.yml` — automated lint and unit tests on every PR.
 - `.github/workflows/docker-build.yml` — validates the Docker image builds on every PR.

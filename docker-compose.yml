@@ -21,17 +21,23 @@ services:
       - ./chroma-data:/chroma/chroma
     restart: unless-stopped
 
-  kuzu_explorer:
-    image: kuzudb/explorer:0.8.2
-    container_name: netwatch_kuzu_explorer
-    ports:
-      - "8001:8000"
+  # kuzu_explorer is intentionally disabled. KuzuDB only allows a single
+  # process to open the database at a time; running the explorer alongside the
+  # agent causes "Could not set lock on file" errors in the agent.
+  # To browse the graph data, stop the agent first and then run the explorer
+  # manually:
+  #   docker run -p 8001:8000 -v ./kuzu-data/netwatch.kuzu:/database:ro \
+  #     -e MODE=READ_ONLY kuzudb/explorer:0.8.2
+
+  litellm:
+    image: ghcr.io/berriai/litellm:main-latest
+    container_name: netwatch_litellm
+    network_mode: host
     volumes:
-      - ./kuzu-data:/database:ro
-    environment:
-      - MODE=READ_ONLY
-      - KUZU_FILE=netwatch.kuzu
-    user: "0:0"
+      - ./config/litellm_config.yml:/app/config.yaml:ro
+    command:
+      - "--config=/app/config.yaml"
+      - "--port=4000"
     restart: unless-stopped
 
   agent:

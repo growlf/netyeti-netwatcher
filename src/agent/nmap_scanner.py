@@ -130,19 +130,49 @@ def run_scan() -> None:
     if "127.0.0.1" not in all_subnets:
         all_subnets.append("127.0.0.1")
 
+    # TCP ports: common services + known VPN TCP ports
+    #   500  = IKEv2/IKEv1 (also listens on TCP in some implementations)
+    #   1194 = OpenVPN (TCP mode)
+    #   1723 = PPTP
+    #   4500 = IPsec NAT-T
+    tcp_ports = "22,80,443,500,1194,1723,4500,5380,8006,8291,11434"
     logger.info(
-        "[Nmap] Scanning subnets: %s. Checking for open ports 22, 80, 443, 5380, 8006, 8291, 11434...",
+        "[Nmap] Scanning subnets: %s. Checking for open ports %s...",
         all_subnets,
+        tcp_ports,
     )
     output_file = os.path.join(config.FACTS_DIR, "nmap_discovery.xml")
 
-    cmd = ["nmap", "-p", "22,80,443,5380,8006,8291,11434"] + all_subnets + ["-oX", output_file]
+    cmd = ["nmap", "-p", tcp_ports] + all_subnets + ["-oX", output_file]
     result = subprocess.run(cmd, capture_output=True, text=True)
 
     if result.returncode == 0:
         logger.info("[Nmap] Discovery complete. Results saved to %s", output_file)
     else:
         logger.error("[Nmap] Scan failed: %s", result.stderr)
+
+    if config.VPN_SCAN_ENABLED:
+        # UDP-based VPN protocols cannot be detected with a standard TCP scan.
+        # This optional scan targets the most common UDP VPN ports:
+        #   51820 = WireGuard
+        #   500   = IKEv2/IKEv1 (ISAKMP)
+        #   4500  = IPsec NAT-T
+        #   1194  = OpenVPN (UDP mode)
+        # NOTE: UDP scanning requires root privileges and is significantly slower
+        # than TCP scanning.  Enable only when VPN_SCAN_ENABLED=true.
+        udp_ports = "51820,500,4500,1194"
+        udp_output_file = os.path.join(config.FACTS_DIR, "nmap_vpn_udp.xml")
+        logger.info(
+            "[Nmap] VPN_SCAN_ENABLED: running UDP scan for ports %s on %s...",
+            udp_ports,
+            all_subnets,
+        )
+        cmd_udp = ["nmap", "-sU", "-p", udp_ports] + all_subnets + ["-oX", udp_output_file]
+        result_udp = subprocess.run(cmd_udp, capture_output=True, text=True)
+        if result_udp.returncode == 0:
+            logger.info("[Nmap] UDP VPN scan complete. Results saved to %s", udp_output_file)
+        else:
+            logger.error("[Nmap] UDP VPN scan failed: %s", result_udp.stderr)
 
 
 if __name__ == "__main__":

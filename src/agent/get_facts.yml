@@ -12,6 +12,10 @@
         state: directory
         mode: '0755'
 
+    - name: Gather facts from standard Linux/Unix hosts
+      when: ansible_network_os is not defined
+      ansible.builtin.setup:
+
     - name: Gather facts from network devices (if applicable)
       when: ansible_network_os is defined
       block:

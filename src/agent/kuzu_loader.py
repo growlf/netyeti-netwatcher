@@ -15,6 +15,7 @@ import xml.etree.ElementTree as ET
 import kuzu
 
 import config
+import kuzu_db
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +26,18 @@ FACTS_DIR = config.FACTS_DIR
 # Allowed node-table names (used to prevent label injection)
 # ---------------------------------------------------------------------------
 _VALID_TABLES = frozenset({"Host", "Router"})
+
+# Mapping of well-known VPN port numbers to their protocol names.
+# When nmap discovers one of these ports as open, the Service node's ``name``
+# field is set to the VPN protocol identifier rather than the generic nmap
+# service name, making VPN detection queries straightforward.
+_VPN_PORT_MAP: dict[int, str] = {
+    51820: "wireguard",
+    500: "ikev2",
+    4500: "ikev2",
+    1194: "openvpn",
+    1723: "pptp",
+}
 
 
 def _sanitize_table(table: str) -> str:
@@ -140,6 +153,109 @@ def load_ansible_facts(conn: kuzu.Connection) -> None:
                 conn.execute(rel_query, parameters={"host_id": host_id, "iface_id": iface_id})
             except Exception as e:
                 logger.error("[Ansible] Failed to upsert Interface %s for %s: %s", iface, hostname, e)
+
+
+# ---------------------------------------------------------------------------
+# nmap service ingestion helper
+# ---------------------------------------------------------------------------
+
+def _ingest_nmap_services(conn: kuzu.Connection, filepath: str) -> int:
+    """
+    Parse an nmap XML file and upsert ``Service`` nodes plus ``HAS_PORT``
+    relationships for every open (or ``open|filtered``) port found.
+
+    Service node ``name`` is set to the VPN protocol identifier (e.g.
+    ``"wireguard"``, ``"ikev2"``) when the port number appears in
+    :data:`_VPN_PORT_MAP`; otherwise the nmap-detected service name is used.
+
+    Returns the number of service records written.
+    """
+    try:
+        tree = ET.parse(filepath)
+        root = tree.getroot()
+    except Exception as e:
+        logger.error("[Nmap] Failed to parse nmap XML for services (%s): %s", filepath, e)
+        return 0
+
+    count = 0
+    for host in root.findall('host'):
+        status = host.find('status')
+        if status is None or status.get('state') != 'up':
+            continue
+
+        ip = None
+        for address in host.findall('address'):
+            if address.get('addrtype') == 'ipv4':
+                ip = address.get('addr')
+                break
+        if not ip:
+            continue
+
+        ports_elem = host.find('ports')
+        if ports_elem is None:
+            continue
+
+        for port_elem in ports_elem.findall('port'):
+            protocol = port_elem.get('protocol', 'tcp')
+            try:
+                port_num = int(port_elem.get('portid', '0'))
+            except ValueError:
+                continue
+
+            state_elem = port_elem.find('state')
+            state = state_elem.get('state', 'unknown') if state_elem is not None else 'unknown'
+            # Only record ports that are confirmed or likely open
+            if state not in ('open', 'open|filtered'):
+                continue
+
+            svc_elem = port_elem.find('service')
+            nmap_name = svc_elem.get('name', '') if svc_elem is not None else ''
+            # Prefer the known VPN protocol name over the generic nmap label
+            svc_name = _VPN_PORT_MAP.get(port_num) or nmap_name
+
+            svc_id = f"svc_{ip.replace('.', '_')}_{protocol}_{port_num}"
+
+            svc_query = """
+            MERGE (s:Service {id: $id})
+            ON CREATE SET s.name = $name, s.port = $port, s.state = $state
+            ON MATCH SET s.state = $state
+            """
+            try:
+                conn.execute(svc_query, parameters={
+                    "id": svc_id,
+                    "name": svc_name,
+                    "port": port_num,
+                    "state": state,
+                })
+            except Exception as e:
+                logger.error(
+                    "[Nmap] Failed to upsert Service %s/%s for %s: %s",
+                    protocol, port_num, ip, e,
+                )
+                continue
+
+            # Run one MERGE per node type so Kuzu can resolve which HAS_PORT
+            # relationship table to use (HAS_PORT(FROM Host TO Service) vs
+            # HAS_PORT(FROM Router TO Service)).  If no node of a given type has
+            # this IP the MATCH simply returns no rows and MERGE is a no-op.
+            rel_written = False
+            for node_type in ("Host", "Router"):
+                rel_query = f"""
+                MATCH (h:{node_type} {{ip: $ip}}), (s:Service {{id: $svc_id}})
+                MERGE (h)-[r:HAS_PORT]->(s)
+                """
+                try:
+                    conn.execute(rel_query, parameters={"ip": ip, "svc_id": svc_id})
+                    rel_written = True
+                except Exception as e:
+                    logger.error(
+                        "[Nmap] Failed to link %s %s → Service %s/%s: %s",
+                        node_type, ip, protocol, port_num, e,
+                    )
+            if rel_written:
+                count += 1
+
+    return count
 
 
 # ---------------------------------------------------------------------------
@@ -367,6 +483,16 @@ def load_nmap_facts(conn: kuzu.Connection) -> None:
 
     logger.info("[Nmap] Processed %d active hosts from Nmap.", count)
 
+    # Ingest open ports as Service nodes (TCP scan)
+    svc_count = _ingest_nmap_services(conn, filepath)
+    logger.info("[Nmap] Ingested %d service records from TCP discovery scan.", svc_count)
+
+    # Ingest open ports from the optional UDP VPN scan (only present when VPN_SCAN_ENABLED=true)
+    vpn_udp_file = os.path.join(FACTS_DIR, 'nmap_vpn_udp.xml')
+    if os.path.exists(vpn_udp_file):
+        vpn_svc_count = _ingest_nmap_services(conn, vpn_udp_file)
+        logger.info("[Nmap] Ingested %d VPN service records from UDP scan.", vpn_svc_count)
+
 
 # ---------------------------------------------------------------------------
 # Entry point
@@ -375,18 +501,13 @@ def load_nmap_facts(conn: kuzu.Connection) -> None:
 def main() -> None:
     logger.info("Connecting to Kuzu Graph Database at %s...", DB_PATH)
 
-    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
-
-    db = kuzu.Database(DB_PATH)
-    conn = kuzu.Connection(db)
-
+    conn = kuzu_db.get_connection()
     try:
         init_db(conn)
         load_nmap_facts(conn)
         load_ansible_facts(conn)
     finally:
         conn.close()
-        db.close()
 
     logger.info("[Success] Data ingestion complete.")
 
