@@ -659,6 +659,7 @@ async def services_dashboard(request: Request, ip: str):
     # Parse available services for this ip from Nmap
     nmap_xml = "/app/collected_facts/nmap_discovery.xml"
     services = []
+    safe_ip_for_log = ip.replace("\r", "").replace("\n", "")
     
     if os.path.exists(nmap_xml):
         try:
@@ -689,7 +690,7 @@ async def services_dashboard(request: Request, ip: str):
             logging.warning(
                 "Failed to parse Nmap services data from %s for ip %s",
                 nmap_xml,
-                ip,
+                safe_ip_for_log,
                 exc_info=True,
             )
 
