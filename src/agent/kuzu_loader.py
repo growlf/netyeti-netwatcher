@@ -15,6 +15,7 @@ import xml.etree.ElementTree as ET
 import kuzu
 
 import config
+import kuzu_db
 
 logger = logging.getLogger(__name__)
 
@@ -375,18 +376,13 @@ def load_nmap_facts(conn: kuzu.Connection) -> None:
 def main() -> None:
     logger.info("Connecting to Kuzu Graph Database at %s...", DB_PATH)
 
-    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
-
-    db = kuzu.Database(DB_PATH)
-    conn = kuzu.Connection(db)
-
+    conn = kuzu_db.get_connection()
     try:
         init_db(conn)
         load_nmap_facts(conn)
         load_ansible_facts(conn)
     finally:
         conn.close()
-        db.close()
 
     logger.info("[Success] Data ingestion complete.")
 

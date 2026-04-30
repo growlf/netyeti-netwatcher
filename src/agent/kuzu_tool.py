@@ -1,8 +1,8 @@
 import os
 import json
 import logging
-import kuzu
 import config
+import kuzu_db
 from llama_index.core.tools import FunctionTool
 from llm_connector import get_llm
 
@@ -38,9 +38,9 @@ def execute_kuzu_query(cypher_query: str) -> str:
         if any(keyword in upper_query for keyword in ["CREATE", "DELETE", "MERGE", "SET", "DROP"]):
             return json.dumps({"error": "Only MATCH and RETURN queries are allowed."})
 
-        # Create a connection (db is loaded automatically by Kuzu if it exists)
-        db = kuzu.Database(DB_PATH)
-        conn = kuzu.Connection(db)
+        # Use the shared Database singleton so we never fight the .lock file
+        # with the background ingestion agent (kuzu_loader).
+        conn = kuzu_db.get_connection()
         try:
             results = conn.execute(cypher_query)
             output = []
@@ -49,7 +49,6 @@ def execute_kuzu_query(cypher_query: str) -> str:
             return json.dumps(output, default=str)
         finally:
             conn.close()
-            db.close()
     except Exception as e:
         logger.error(f"Kuzu query failed: {e}")
         return json.dumps({"error": str(e)})
