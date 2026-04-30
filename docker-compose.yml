@@ -29,17 +29,6 @@ services:
   #   docker run -p 8001:8000 -v ./kuzu-data/netwatch.kuzu:/database:ro \
   #     -e MODE=READ_ONLY kuzudb/explorer:0.8.2
 
-  litellm:
-    image: ghcr.io/berriai/litellm:main-latest
-    container_name: netwatch_litellm
-    network_mode: host
-    volumes:
-      - ./config/litellm_config.yml:/app/config.yaml:ro
-    command:
-      - "--config=/app/config.yaml"
-      - "--port=4000"
-    restart: unless-stopped
-
   agent:
     build:
       context: .

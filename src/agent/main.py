@@ -407,27 +407,13 @@ async def verify_llm_config(ollama_url: str = Form("")):
 
     try:
         url = _validate_http_url(ollama_url)
-        models = []
-        is_openai_format = False
-        
-        # Try OpenAI format first (LiteLLM)
-        try:
-            resp = requests.get(f"{url}/v1/models", timeout=5)
-            if resp.status_code == 200:
-                data = resp.json()
-                models = [{"name": m.get("id", "")} for m in data.get("data", [])]
-                is_openai_format = True
-        except Exception:
-            logging.debug("OpenAI-compatible model probe failed for %s; trying Ollama format fallback", url, exc_info=True)
 
-        # Fallback to Ollama format
-        if not is_openai_format:
-            resp = requests.get(f"{url}/api/tags", timeout=5)
-            if resp.status_code == 200:
-                data = resp.json()
-                models = data.get("models", [])
-            else:
-                return HTMLResponse(f"<div class='text-red-500 text-sm mt-2'>Error: Received status code {resp.status_code}</div>")
+        resp = requests.get(f"{url}/api/tags", timeout=5)
+        if resp.status_code != 200:
+            return HTMLResponse(f"<div class='text-red-500 text-sm mt-2'>Error: Received status code {resp.status_code}</div>")
+
+        data = resp.json()
+        models = data.get("models", [])
 
         if not models:
             return HTMLResponse(
