@@ -30,3 +30,10 @@ COLLECTION_INTERVAL_SECONDS = int(os.environ.get("COLLECTION_INTERVAL_SECONDS", 
 AUTO_DISCOVERY = os.environ.get("AUTO_DISCOVERY", "false").lower() == "true"
 TRACEROUTE_TARGET = os.environ.get("TRACEROUTE_TARGET", "8.8.8.8")
 ROUTER_WAN_IP = os.environ.get("ROUTER_WAN_IP", "").strip()
+
+# --- VPN detection settings ---
+# Enable additional UDP port scan for VPN protocol detection (requires root; slow).
+# When true, nmap will scan UDP ports 51820 (WireGuard), 500/4500 (IKEv2/IPsec),
+# and 1194 (OpenVPN) across all discovered subnets and store results in
+# nmap_vpn_udp.xml, which is then ingested alongside the main TCP discovery.
+VPN_SCAN_ENABLED = os.environ.get("VPN_SCAN_ENABLED", "false").lower() == "true"

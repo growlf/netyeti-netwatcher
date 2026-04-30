@@ -17,7 +17,14 @@ Nodes:
 - Host(id STRING, hostname STRING, ip STRING, os STRING)
 - Router(id STRING, hostname STRING, ip STRING, os STRING)
 - Interface(id STRING, name STRING, mac_address STRING, ipv4 STRING)
+  # VPN tunnel interfaces use names like: tun*, wg*, tap*, vpn*, ovpn*, ipsec*, l2tp*, pptp*
 - Service(id STRING, name STRING, port INT64, state STRING)
+  # For known VPN ports, name contains the protocol identifier:
+  #   wireguard  -> port 51820 (udp)
+  #   ikev2      -> ports 500 and 4500 (udp/tcp)
+  #   openvpn    -> port 1194 (udp/tcp)
+  #   pptp       -> port 1723 (tcp)
+  # state is "open" or "open|filtered"
 
 Relationships:
 - HAS_INTERFACE(FROM Host TO Interface)
@@ -61,7 +68,7 @@ def load_few_shots() -> str:
         {"nl": "List all devices running HTTP", "cypher": "MATCH (h)-[:HAS_PORT]->(s:Service) WHERE s.port = 80 RETURN h.hostname, h.ip;"},
         {"nl": "Find all Ollama nodes", "cypher": "MATCH (h)-[:HAS_PORT]->(s:Service) WHERE s.port = 11434 RETURN h.hostname, h.ip;"},
         {"nl": "List OS types per device", "cypher": "MATCH (h:Host) RETURN h.hostname, h.os UNION MATCH (r:Router) RETURN r.hostname, r.os;"},
-        {"nl": "All VPN connections", "cypher": "MATCH (i:Interface) WHERE i.name CONTAINS 'tun' OR i.name CONTAINS 'wg' MATCH (h)-[:HAS_INTERFACE]->(i) RETURN h.hostname, i.name, i.ipv4;"}
+        {"nl": "All VPN connections", "cypher": "MATCH (h)-[:HAS_INTERFACE]->(i:Interface) WHERE i.name CONTAINS 'tun' OR i.name CONTAINS 'wg' OR i.name CONTAINS 'tap' OR i.name CONTAINS 'vpn' OR i.name CONTAINS 'ipsec' OR i.name CONTAINS 'l2tp' OR i.name CONTAINS 'pptp' RETURN h.hostname, 'interface' AS signal, i.name AS detail UNION MATCH (h)-[:HAS_PORT]->(s:Service) WHERE s.port IN [51820, 500, 4500, 1194, 1723] RETURN h.hostname, 'port' AS signal, s.name AS detail;"}
     ]
     
     # Allow overriding via settings
