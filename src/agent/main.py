@@ -9,7 +9,6 @@ import ipaddress
 import json
 import logging
 import os
-import socket
 import threading
 import xml.etree.ElementTree as ET
 from contextlib import asynccontextmanager
@@ -369,51 +368,30 @@ def _validate_http_url(raw_url: str) -> str:
 
     allowed_hosts_raw = os.getenv("ALLOWED_LLM_HOSTS", "")
     allowed_entries = [h.strip() for h in allowed_hosts_raw.split(",") if h.strip()]
-    if not allowed_entries:
-        raise ValueError("LLM URL verification is not enabled: ALLOWED_LLM_HOSTS is not configured")
 
-    matched_base_url = None
-    for entry in allowed_entries:
-        entry_parsed = urlparse(entry)
-        if entry_parsed.scheme not in ("http", "https") or not entry_parsed.hostname:
-            continue
-        entry_scheme = entry_parsed.scheme.lower()
-        entry_host = entry_parsed.hostname.lower()
-        entry_port = entry_parsed.port or (443 if entry_scheme == "https" else 80)
-        if (
-            requested_scheme == entry_scheme
-            and requested_host == entry_host
-            and requested_port == entry_port
-        ):
-            matched_base_url = f"{entry_scheme}://{entry_host}:{entry_port}"
-            break
+    if allowed_entries:
+        # When an allowlist is configured, the requested URL must match one of the entries.
+        matched_base_url = None
+        for entry in allowed_entries:
+            entry_parsed = urlparse(entry)
+            if entry_parsed.scheme not in ("http", "https") or not entry_parsed.hostname:
+                continue
+            entry_scheme = entry_parsed.scheme.lower()
+            entry_host = entry_parsed.hostname.lower()
+            entry_port = entry_parsed.port or (443 if entry_scheme == "https" else 80)
+            if (
+                requested_scheme == entry_scheme
+                and requested_host == entry_host
+                and requested_port == entry_port
+            ):
+                matched_base_url = f"{entry_scheme}://{entry_host}:{entry_port}"
+                break
 
-    if not matched_base_url:
-        raise ValueError("URL is not in the allowed LLM endpoint list")
-
-    try:
-        addrinfo = socket.getaddrinfo(requested_host, requested_port)
-    except socket.gaierror:
-        raise ValueError("Hostname could not be resolved")
-
-    resolved_ips = {item[4][0] for item in addrinfo if item and item[4]}
-    if not resolved_ips:
-        raise ValueError("Hostname could not be resolved")
-
-    for ip_text in resolved_ips:
-        try:
-            ip_obj = ipaddress.ip_address(ip_text)
-        except ValueError:
-            raise ValueError("Hostname resolved to an invalid IP address")
-        if (
-            ip_obj.is_private
-            or ip_obj.is_loopback
-            or ip_obj.is_link_local
-            or ip_obj.is_multicast
-            or ip_obj.is_reserved
-            or ip_obj.is_unspecified
-        ):
-            raise ValueError("Hostname resolves to a non-public IP address, which is not allowed")
+        if not matched_base_url:
+            raise ValueError("URL is not in the allowed LLM endpoint list")
+    else:
+        # No allowlist configured – accept any well-formed http(s) URL.
+        matched_base_url = f"{requested_scheme}://{requested_host}:{requested_port}"
 
     return matched_base_url.rstrip("/")
 
