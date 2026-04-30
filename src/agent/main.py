@@ -363,15 +363,36 @@ def _validate_http_url(raw_url: str) -> str:
     if not parsed.hostname:
         raise ValueError("URL must include a valid hostname")
 
+    requested_scheme = parsed.scheme.lower()
+    requested_host = parsed.hostname.lower()
+    requested_port = parsed.port or (443 if requested_scheme == "https" else 80)
+
     allowed_hosts_raw = os.getenv("ALLOWED_LLM_HOSTS", "")
-    allowed_hosts = {h.strip().lower() for h in allowed_hosts_raw.split(",") if h.strip()}
-    if not allowed_hosts:
+    allowed_entries = [h.strip() for h in allowed_hosts_raw.split(",") if h.strip()]
+    if not allowed_entries:
         raise ValueError("LLM URL verification is not enabled: ALLOWED_LLM_HOSTS is not configured")
-    if parsed.hostname.lower() not in allowed_hosts:
-        raise ValueError("Hostname is not in the allowed LLM host list")
+
+    matched_base_url = None
+    for entry in allowed_entries:
+        entry_parsed = urlparse(entry)
+        if entry_parsed.scheme not in ("http", "https") or not entry_parsed.hostname:
+            continue
+        entry_scheme = entry_parsed.scheme.lower()
+        entry_host = entry_parsed.hostname.lower()
+        entry_port = entry_parsed.port or (443 if entry_scheme == "https" else 80)
+        if (
+            requested_scheme == entry_scheme
+            and requested_host == entry_host
+            and requested_port == entry_port
+        ):
+            matched_base_url = f"{entry_scheme}://{entry_host}:{entry_port}"
+            break
+
+    if not matched_base_url:
+        raise ValueError("URL is not in the allowed LLM endpoint list")
 
     try:
-        addrinfo = socket.getaddrinfo(parsed.hostname, parsed.port or (443 if parsed.scheme == "https" else 80))
+        addrinfo = socket.getaddrinfo(requested_host, requested_port)
     except socket.gaierror:
         raise ValueError("Hostname could not be resolved")
 
@@ -394,10 +415,7 @@ def _validate_http_url(raw_url: str) -> str:
         ):
             raise ValueError("Hostname resolves to a non-public IP address, which is not allowed")
 
-    netloc = parsed.hostname
-    if parsed.port:
-        netloc = f"{netloc}:{parsed.port}"
-    return f"{parsed.scheme}://{netloc}".rstrip("/")
+    return matched_base_url.rstrip("/")
 
 @app.post("/api/config/llm/verify", response_class=HTMLResponse)
 async def verify_llm_config(ollama_url: str = Form("")):
