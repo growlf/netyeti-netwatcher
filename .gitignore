@@ -33,7 +33,7 @@ Thumbs.db
 
 # Documentation tasks
 /docs/task.md
-/task.md
+/docs/walkthrough.md
 
 # Python build / packaging artifacts
 *.egg-info/

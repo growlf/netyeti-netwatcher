@@ -4,6 +4,7 @@
 
 kuzu==0.8.2
 llama-index==0.14.21
+llama-index-llms-openai
 llama-index-llms-ollama==0.10.1
 chromadb==0.5.23
 ansible==10.7.0
