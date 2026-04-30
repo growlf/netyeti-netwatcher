@@ -6,8 +6,6 @@ import os
 import json
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "src", "agent"))
 
 # Stub llama_index modules before importing kuzu_tool to avoid network calls
