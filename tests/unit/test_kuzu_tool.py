@@ -144,9 +144,10 @@ def test_load_few_shots_loads_custom_file(tmp_path):
     custom_path = tmp_path / "kuzu_few_shots.json"
     custom_path.write_text(json.dumps(custom))
 
-    with patch("os.path.exists", return_value=True), \
-         patch("builtins.open", MagicMock(return_value=open(str(custom_path)))):
-        result = kuzu_tool.load_few_shots()
+    with open(str(custom_path)) as custom_file:
+        with patch("os.path.exists", return_value=True), \
+             patch("builtins.open", MagicMock(return_value=custom_file)):
+            result = kuzu_tool.load_few_shots()
 
     assert "Find all hosts" in result
     assert "MATCH (h:Host)" in result
