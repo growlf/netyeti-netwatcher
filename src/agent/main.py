@@ -363,6 +363,13 @@ def _validate_http_url(raw_url: str) -> str:
     if not parsed.hostname:
         raise ValueError("URL must include a valid hostname")
 
+    allowed_hosts_raw = os.getenv("ALLOWED_LLM_HOSTS", "")
+    allowed_hosts = {h.strip().lower() for h in allowed_hosts_raw.split(",") if h.strip()}
+    if not allowed_hosts:
+        raise ValueError("LLM URL verification is not enabled: ALLOWED_LLM_HOSTS is not configured")
+    if parsed.hostname.lower() not in allowed_hosts:
+        raise ValueError("Hostname is not in the allowed LLM host list")
+
     try:
         socket.getaddrinfo(parsed.hostname, parsed.port or (443 if parsed.scheme == "https" else 80))
     except socket.gaierror:
