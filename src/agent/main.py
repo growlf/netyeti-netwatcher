@@ -717,8 +717,12 @@ async def api_query_kuzu(req: QueryRequest):
     try:
         answer = query_network(req.query)
         return {"answer": answer}
-    except Exception as e:
-        return {"error": str(e)}
+    except Exception:
+        logging.exception("Failed to process Kuzu query")
+        return JSONResponse(
+            status_code=500,
+            content={"error": "An internal error has occurred."},
+        )
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8085)
