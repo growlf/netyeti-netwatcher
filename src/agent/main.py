@@ -18,10 +18,12 @@ import uvicorn
 import yaml
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Request, Form
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
+from pydantic import BaseModel
 
 import config
+from kuzu_tool import query_network
 from agent import agent_loop
 from parsers import parse_routeros_print  # re-exported for backwards-compat with tests
 
@@ -657,6 +659,17 @@ async def services_dashboard(request: Request, ip: str):
             "services": services
         }
     )
+
+class QueryRequest(BaseModel):
+    query: str
+
+@app.post("/api/query/kuzu")
+async def api_query_kuzu(req: QueryRequest):
+    try:
+        answer = query_network(req.query)
+        return {"answer": answer}
+    except Exception as e:
+        return {"error": str(e)}
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8085)

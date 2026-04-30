@@ -44,7 +44,8 @@ def init_db(conn: kuzu.Connection) -> None:
 
     Kuzu raises a RuntimeError when a table already exists, which we
     silently ignore so that this function is safe to call on every startup.
-    """    schema_queries = [
+    """
+    schema_queries = [
         "CREATE NODE TABLE Host(id STRING, hostname STRING, ip STRING, os STRING, PRIMARY KEY (id))",
         "CREATE NODE TABLE Router(id STRING, hostname STRING, ip STRING, os STRING, PRIMARY KEY (id))",
         "CREATE NODE TABLE Interface(id STRING, name STRING, mac_address STRING, ipv4 STRING, PRIMARY KEY (id))",

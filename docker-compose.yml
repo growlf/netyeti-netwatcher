@@ -27,10 +27,9 @@ services:
     ports:
       - "8001:8000"
     volumes:
-      - ./kuzu-data:/database:ro
+      - ./kuzu-data/netwatch.kuzu:/database:ro
     environment:
       - MODE=READ_ONLY
-      - KUZU_FILE=netwatch.kuzu
     user: "0:0"
     restart: unless-stopped
 
