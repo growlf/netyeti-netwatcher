@@ -80,10 +80,6 @@ def test_get_db_schema_contains_relationships():
 
 def _make_result(rows):
     result = MagicMock()
-    rows_iter = iter(rows)
-    result.has_next.side_effect = lambda: True if rows else False
-    result.get_next.side_effect = rows_iter
-    # Simulate has_next going False after all rows consumed
     call_count = [0]
     total = len(rows)
 
@@ -146,24 +142,19 @@ def test_load_few_shots_returns_default_examples(tmp_path):
     assert "Cypher:" in result
 
 
-def test_load_few_shots_loads_custom_file(tmp_path, monkeypatch):
+def test_load_few_shots_loads_custom_file(tmp_path):
     custom = [
         {"nl": "Find all hosts", "cypher": "MATCH (h:Host) RETURN h.hostname;"}
     ]
     custom_path = tmp_path / "kuzu_few_shots.json"
     custom_path.write_text(json.dumps(custom))
 
-    monkeypatch.setattr(kuzu_tool, "load_few_shots", lambda: (
-        lambda p=str(custom_path): (
-            open(p).read() if os.path.exists(p) else ""
-        )
-    )())
+    with patch("os.path.exists", return_value=True), \
+         patch("builtins.open", MagicMock(return_value=open(str(custom_path)))):
+        result = kuzu_tool.load_few_shots()
 
-    # Direct test of file loading logic
-    with patch("builtins.open", MagicMock(return_value=open(str(custom_path)))):
-        with patch("os.path.exists", return_value=True):
-            result = kuzu_tool.load_few_shots()
-    assert isinstance(result, str)
+    assert "Find all hosts" in result
+    assert "MATCH (h:Host)" in result
 
 
 # ---------------------------------------------------------------------------
