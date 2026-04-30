@@ -4,9 +4,8 @@ Unit tests for kuzu_loader helper functions.
 import sys
 import os
 import types
-import tempfile
 import textwrap
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock
 
 import pytest
 
