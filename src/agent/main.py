@@ -399,7 +399,7 @@ async def verify_llm_config(ollama_url: str = Form("")):
                 models = [{"name": m.get("id", "")} for m in data.get("data", [])]
                 is_openai_format = True
         except Exception:
-            pass
+            logging.debug("OpenAI-compatible model probe failed for %s; trying Ollama format fallback", url, exc_info=True)
 
         # Fallback to Ollama format
         if not is_openai_format:
