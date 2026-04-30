@@ -176,6 +176,8 @@ async def dashboard(request: Request):
                 is_mikrotik = bool(vendor and ("Routerboard" in vendor or "MikroTik" in vendor))
                 is_proxmox = False
                 is_dns = False
+                is_ollama = False
+                services = []
                 open_ports = []
                 for port in host.findall('.//port'):
                     state = port.find('state')
@@ -194,6 +196,11 @@ async def dashboard(request: Request):
                             is_dns = True
                             if vendor == "Unknown":
                                 vendor = "Technitium DNS/DHCP"
+                        elif portid == '11434':
+                            is_ollama = True
+                            services.append({"name": "Ollama LLM Node", "port": 11434, "url": f"http://{ip}:11434"})
+                            if vendor == "Unknown":
+                                vendor = "Ollama AI Node"
 
                 has_creds = os.path.exists(os.path.join(config.HOST_VARS_DIR, f"{ip}.yml"))
 
@@ -232,8 +239,10 @@ async def dashboard(request: Request):
                     "is_mikrotik": is_mikrotik,
                     "is_proxmox": is_proxmox,
                     "is_dns": is_dns,
+                    "is_ollama": is_ollama,
                     "has_creds": has_creds,
                     "open_ports": open_ports,
+                    "services": services,
                     "facts": facts,
                     "interfaces": interfaces,
                 })
@@ -277,6 +286,102 @@ async def dashboard(request: Request):
         },
     )
 
+@app.get("/config", response_class=HTMLResponse)
+async def config_page(request: Request):
+    # Parse available ollamas
+    nmap_xml = "/app/collected_facts/nmap_discovery.xml"
+    detected_ollamas = []
+    
+    if os.path.exists(nmap_xml):
+        try:
+            tree = ET.parse(nmap_xml)
+            for host in tree.getroot().findall('host'):
+                status = host.find('status')
+                if status is None or status.get('state') != 'up':
+                    continue
+                ip = ""
+                for address in host.findall('address'):
+                    if address.get('addrtype') == 'ipv4':
+                        ip = address.get('addr')
+                
+                for port in host.findall('.//port'):
+                    state = port.find('state')
+                    if state is not None and port.get('portid') == '11434' and state.get('state') == 'open':
+                        detected_ollamas.append(ip)
+                        break
+        except Exception:
+            pass
+            
+    # Load current settings
+    settings = {}
+    settings_path = "/app/config/settings.json"
+    if os.path.exists(settings_path):
+        try:
+            with open(settings_path, "r") as f:
+                settings = json.load(f)
+        except Exception:
+            pass
+            
+    return templates.TemplateResponse(
+        request=request,
+        name="config.html", 
+        context={
+            "request": request, 
+            "detected_ollamas": detected_ollamas,
+            "settings": settings
+        }
+    )
+
+@app.post("/api/config/llm", response_class=HTMLResponse)
+async def save_llm_config(ollama_url: str = Form(""), ollama_model: str = Form("")):
+    settings_path = "/app/config/settings.json"
+    settings = {}
+    if os.path.exists(settings_path):
+        try:
+            with open(settings_path, "r") as f:
+                settings = json.load(f)
+        except Exception:
+            pass
+            
+    settings["ollama_url"] = ollama_url
+    settings["ollama_model"] = ollama_model
+    
+    os.makedirs("/app/config", exist_ok=True)
+    with open(settings_path, "w") as f:
+        json.dump(settings, f)
+        
+    return HTMLResponse("<div class='text-green-500 font-bold mt-2 text-sm'>✓ LLM Settings saved successfully.</div>")
+
+@app.post("/api/config/llm/verify", response_class=HTMLResponse)
+async def verify_llm_config(ollama_url: str = Form("")):
+    import requests
+    if not ollama_url:
+        return HTMLResponse("<div class='text-red-500 text-sm mt-2'>URL is required.</div>")
+        
+    try:
+        url = ollama_url.rstrip("/")
+        resp = requests.get(f"{url}/api/tags", timeout=5)
+        if resp.status_code == 200:
+            data = resp.json()
+            models = data.get("models", [])
+            
+            if not models:
+                return HTMLResponse(
+                    "<div class='text-amber-500 text-sm mb-2'>Connected, but no models found. You may need to pull a model first.</div>"
+                    "<label class='block text-sm text-slate-400 mb-1'>Default Model Name</label>"
+                    "<input type='text' name='ollama_model' class='w-full bg-slate-800 border border-slate-600 text-white rounded px-3 py-2'>"
+                )
+                
+            options = "".join([f"<option value='{m.get('name')}'>{m.get('name')}</option>" for m in models])
+            return HTMLResponse(
+                f"<div class='text-green-500 text-sm font-bold mb-2'>✓ Connected successfully! Found {len(models)} models.</div>"
+                f"<label class='block text-sm text-slate-400 mb-1'>Default Model Name</label>"
+                f"<select name='ollama_model' class='w-full bg-slate-800 border border-slate-600 text-white rounded px-3 py-2'>{options}</select>"
+            )
+        else:
+            return HTMLResponse(f"<div class='text-red-500 text-sm mt-2'>Error: Received status code {resp.status_code}</div>")
+    except Exception as e:
+        return HTMLResponse(f"<div class='text-red-500 text-sm mt-2'>Connection failed: {str(e)}</div>")
 
 @app.post("/api/test_ssh", response_class=HTMLResponse)
 async def test_ssh(
@@ -509,6 +614,49 @@ async def device_dashboard(request: Request, ip: str):
         },
     )
 
+@app.get("/services/{ip}", response_class=HTMLResponse)
+async def services_dashboard(request: Request, ip: str):
+    # Parse available services for this ip from Nmap
+    nmap_xml = "/app/collected_facts/nmap_discovery.xml"
+    services = []
+    
+    if os.path.exists(nmap_xml):
+        try:
+            tree = ET.parse(nmap_xml)
+            for host in tree.getroot().findall('host'):
+                host_ip = ""
+                for address in host.findall('address'):
+                    if address.get('addrtype') == 'ipv4':
+                        host_ip = address.get('addr')
+                
+                if host_ip == ip:
+                    for port in host.findall('.//port'):
+                        state = port.find('state')
+                        if state is not None and state.get('state') == 'open':
+                            portid = port.get('portid')
+                            if portid == '11434':
+                                services.append({"name": "Ollama LLM Node", "port": 11434, "url": f"http://{ip}:11434"})
+                            elif portid == '80':
+                                services.append({"name": "HTTP Web Interface", "port": 80, "url": f"http://{ip}"})
+                            elif portid == '443':
+                                services.append({"name": "HTTPS Web Interface", "port": 443, "url": f"https://{ip}"})
+                            elif portid == '5380':
+                                services.append({"name": "Technitium DNS Panel", "port": 5380, "url": f"http://{ip}:5380"})
+                            elif portid == '8006':
+                                services.append({"name": "Proxmox Web UI", "port": 8006, "url": f"https://{ip}:8006"})
+                    break
+        except Exception:
+            pass
+
+    return templates.TemplateResponse(
+        request=request,
+        name="services.html", 
+        context={
+            "request": request, 
+            "ip": ip,
+            "services": services
+        }
+    )
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8085)
