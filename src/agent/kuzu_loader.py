@@ -33,10 +33,10 @@ _VALID_TABLES = frozenset({"Host", "Router"})
 # service name, making VPN detection queries straightforward.
 _VPN_PORT_MAP: dict[int, str] = {
     51820: "wireguard",
-    500:   "ikev2",
-    4500:  "ikev2",
-    1194:  "openvpn",
-    1723:  "pptp",
+    500: "ikev2",
+    4500: "ikev2",
+    1194: "openvpn",
+    1723: "pptp",
 }
 
 
@@ -218,7 +218,7 @@ def _ingest_nmap_services(conn: kuzu.Connection, filepath: str) -> int:
             svc_query = """
             MERGE (s:Service {id: $id})
             ON CREATE SET s.name = $name, s.port = $port, s.state = $state
-            ON MATCH SET s.name = $name, s.state = $state
+            ON MATCH SET s.state = $state
             """
             rel_query = """
             MATCH (h), (s:Service {id: $svc_id})
