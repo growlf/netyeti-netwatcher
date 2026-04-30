@@ -3,6 +3,7 @@ import json
 import logging
 import kuzu
 import config
+from llama_index.core.tools import FunctionTool
 from llm_connector import get_llm
 
 logger = logging.getLogger(__name__)
@@ -32,14 +33,14 @@ Relationships:
 def execute_kuzu_query(cypher_query: str) -> str:
     """Execute a READ-ONLY Cypher query against Kuzu and return the results as a JSON string."""
     try:
-        # Create a connection (db is loaded automatically by Kuzu if it exists)
-        db = kuzu.Database(DB_PATH)
-        conn = kuzu.Connection(db)
-        
-        # We only want READ queries. Basic safety check.
+        # Validate before opening the database — reject any write operations early.
         upper_query = cypher_query.upper()
         if any(keyword in upper_query for keyword in ["CREATE", "DELETE", "MERGE", "SET", "DROP"]):
             return json.dumps({"error": "Only MATCH and RETURN queries are allowed."})
+
+        # Create a connection (db is loaded automatically by Kuzu if it exists)
+        db = kuzu.Database(DB_PATH)
+        conn = kuzu.Connection(db)
             
         results = conn.execute(cypher_query)
         
@@ -138,6 +139,22 @@ Answer:"""
         return final_response.text.strip()
     except Exception as e:
         return f"Failed to synthesize final answer: {e}"
+
+# ---------------------------------------------------------------------------
+# LlamaIndex FunctionTool — exposes execute_kuzu_query as a first-class tool
+# so it can be plugged into any LlamaIndex agent or query engine.
+# ---------------------------------------------------------------------------
+
+kuzu_query_tool = FunctionTool.from_defaults(
+    fn=execute_kuzu_query,
+    name="execute_network_cypher_query",
+    description=(
+        "Execute a READ-ONLY Cypher query against the Kuzu network topology graph database. "
+        "Use this to retrieve structured information about hosts, routers, interfaces, services, "
+        "and their connections. Only MATCH and RETURN queries are allowed. "
+        "Returns results as a JSON string."
+    ),
+)
 
 if __name__ == "__main__":
     # Simple test execution
