@@ -56,9 +56,9 @@ def execute_kuzu_query(cypher_query: str) -> str:
             return json.dumps(output, default=str)
         finally:
             conn.close()
-    except Exception as e:
-        logger.error(f"Kuzu query failed: {e}")
-        return json.dumps({"error": str(e)})
+    except Exception:
+        logger.exception("Kuzu query failed")
+        return json.dumps({"error": "Database query failed."})
 
 def load_few_shots() -> str:
     """Load default and custom few-shot examples for text-to-cypher."""
@@ -119,16 +119,21 @@ Cypher:"""
             
         logger.info(f"[KuzuTool] Generated Cypher: {cypher_query}")
         
-    except Exception as e:
-        return f"Failed to generate Cypher query: {e}"
+    except Exception:
+        logger.exception("Failed to generate Cypher query")
+        return "Failed to generate a query at this time."
         
     # 2. Execute Query
     db_result = execute_kuzu_query(cypher_query)
     logger.info(f"[KuzuTool] DB Result: {db_result}")
     
     if "error" in db_result.lower() and "only match" not in db_result.lower():
-        # If execution failed, we return the error for debugging
-        return f"Database error when running generated query:\\nQuery: {cypher_query}\\nResult: {db_result}"
+        logger.error(
+            "Database error when running generated query. Query: %s Result: %s",
+            cypher_query,
+            db_result,
+        )
+        return "Database error when running query."
         
     # 3. Synthesize Final Answer
     synthesis_prompt = f"""You are a network intelligence assistant. A user asked a question about the network topology.
@@ -144,8 +149,9 @@ Answer:"""
     try:
         final_response = llm.complete(synthesis_prompt)
         return final_response.text.strip()
-    except Exception as e:
-        return f"Failed to synthesize final answer: {e}"
+    except Exception:
+        logger.exception("Failed to synthesize final answer")
+        return "Failed to synthesize a final answer at this time."
 
 # ---------------------------------------------------------------------------
 # LlamaIndex FunctionTool — exposes execute_kuzu_query as a first-class tool
