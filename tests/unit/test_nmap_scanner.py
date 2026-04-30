@@ -4,17 +4,14 @@ Unit tests for nmap_scanner helper functions.
 All subprocess calls are mocked so that these tests run without
 requiring nmap, traceroute, or an actual network interface.
 """
-import sys
 import os
-from unittest.mock import MagicMock, patch, mock_open
-
-import pytest
+import sys
+from unittest.mock import MagicMock, mock_open, patch
 
 # Ensure the agent source is importable when tests run outside Docker
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "src", "agent"))
 
 import nmap_scanner
-
 
 # ---------------------------------------------------------------------------
 # get_local_subnet

@@ -31,7 +31,7 @@ def collect_proxmox_facts() -> None:
         filepath = os.path.join(config_dir, f)
 
         try:
-            with open(filepath, "r") as cf:
+            with open(filepath) as cf:
                 creds = yaml.safe_load(cf)
         except Exception as e:
             logger.debug("[ProxmoxCollector] Could not read %s: %s", filepath, e)

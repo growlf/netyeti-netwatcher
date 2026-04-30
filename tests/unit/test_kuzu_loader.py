@@ -1,8 +1,8 @@
 """
 Unit tests for kuzu_loader helper functions.
 """
-import sys
 import os
+import sys
 
 import pytest
 

@@ -1,7 +1,6 @@
-import sys
 import os
+import sys
 
-import pytest
 from fastapi.testclient import TestClient
 
 # Ensure the agent source directory is on the path when running tests outside Docker

@@ -44,7 +44,8 @@ def init_db(conn: kuzu.Connection) -> None:
 
     Kuzu raises a RuntimeError when a table already exists, which we
     silently ignore so that this function is safe to call on every startup.
-    """    schema_queries = [
+    """
+    schema_queries = [
         "CREATE NODE TABLE Host(id STRING, hostname STRING, ip STRING, os STRING, PRIMARY KEY (id))",
         "CREATE NODE TABLE Router(id STRING, hostname STRING, ip STRING, os STRING, PRIMARY KEY (id))",
         "CREATE NODE TABLE Interface(id STRING, name STRING, mac_address STRING, ipv4 STRING, PRIMARY KEY (id))",
@@ -88,7 +89,7 @@ def load_ansible_facts(conn: kuzu.Connection) -> None:
     logger.info("[Ansible] Found %d fact files. Starting ingestion...", len(json_files))
 
     for filepath in json_files:
-        with open(filepath, 'r') as f:
+        with open(filepath) as f:
             try:
                 facts = json.load(f)
             except json.JSONDecodeError:
@@ -125,8 +126,8 @@ def load_ansible_facts(conn: kuzu.Connection) -> None:
             ipv4 = iface_facts.get('ipv4', {}).get('address', 'Unknown')
             iface_id = f"{host_id}_iface_{iface}"
 
-            iface_query = f"""
-            MERGE (i:Interface {{id: $id}})
+            iface_query = """
+            MERGE (i:Interface {id: $id})
             ON CREATE SET i.name = $name, i.mac_address = $mac, i.ipv4 = $ipv4
             ON MATCH SET i.name = $name, i.mac_address = $mac, i.ipv4 = $ipv4
             """
@@ -165,7 +166,7 @@ def load_nmap_facts(conn: kuzu.Connection) -> None:
     hops = []
     wan_ip = None
     if os.path.exists(traceroute_file):
-        with open(traceroute_file, 'r') as f:
+        with open(traceroute_file) as f:
             trace_data = json.load(f)
             hops = trace_data.get('hops', [])
             wan_ip = trace_data.get('wan_ip')
@@ -173,7 +174,7 @@ def load_nmap_facts(conn: kuzu.Connection) -> None:
     gateway_file = os.path.join(FACTS_DIR, 'gateway.txt')
     gateway_ip = None
     if os.path.exists(gateway_file):
-        with open(gateway_file, 'r') as f:
+        with open(gateway_file) as f:
             gateway_ip = f.read().strip()
 
     # Map subnet base (first three octets) to gateway IP
@@ -242,8 +243,8 @@ def load_nmap_facts(conn: kuzu.Connection) -> None:
 
         if mac != "Unknown":
             iface_id = f"{host_id}_primary"
-            iface_query = f"""
-            MERGE (i:Interface {{id: $id}})
+            iface_query = """
+            MERGE (i:Interface {id: $id})
             ON CREATE SET i.name = $name, i.mac_address = $mac, i.ipv4 = $ipv4
             ON MATCH SET i.mac_address = $mac, i.ipv4 = $ipv4
             """
@@ -276,7 +277,7 @@ def load_nmap_facts(conn: kuzu.Connection) -> None:
     for pfile in glob.glob(os.path.join(FACTS_DIR, "proxmox_*.json")):
         proxmox_ip = os.path.basename(pfile).replace("proxmox_", "").replace(".json", "")
         try:
-            with open(pfile, "r") as f:
+            with open(pfile) as f:
                 pdata = json.load(f)
                 for guest in pdata.get("guests", []):
                     for g_ip in guest.get("ips", []):
