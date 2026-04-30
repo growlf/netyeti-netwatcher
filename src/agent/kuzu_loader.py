@@ -220,11 +220,6 @@ def _ingest_nmap_services(conn: kuzu.Connection, filepath: str) -> int:
             ON CREATE SET s.name = $name, s.port = $port, s.state = $state
             ON MATCH SET s.state = $state
             """
-            rel_query = """
-            MATCH (h), (s:Service {id: $svc_id})
-            WHERE (h:Host OR h:Router) AND h.ip = $ip
-            MERGE (h)-[:HAS_PORT]->(s)
-            """
             try:
                 conn.execute(svc_query, parameters={
                     "id": svc_id,
@@ -232,13 +227,33 @@ def _ingest_nmap_services(conn: kuzu.Connection, filepath: str) -> int:
                     "port": port_num,
                     "state": state,
                 })
-                conn.execute(rel_query, parameters={"svc_id": svc_id, "ip": ip})
-                count += 1
             except Exception as e:
                 logger.error(
                     "[Nmap] Failed to upsert Service %s/%s for %s: %s",
                     protocol, port_num, ip, e,
                 )
+                continue
+
+            # Run one MERGE per node type so Kuzu can resolve which HAS_PORT
+            # relationship table to use (HAS_PORT(FROM Host TO Service) vs
+            # HAS_PORT(FROM Router TO Service)).  If no node of a given type has
+            # this IP the MATCH simply returns no rows and MERGE is a no-op.
+            rel_written = False
+            for node_type in ("Host", "Router"):
+                rel_query = f"""
+                MATCH (h:{node_type} {{ip: $ip}}), (s:Service {{id: $svc_id}})
+                MERGE (h)-[r:HAS_PORT]->(s)
+                """
+                try:
+                    conn.execute(rel_query, parameters={"ip": ip, "svc_id": svc_id})
+                    rel_written = True
+                except Exception as e:
+                    logger.error(
+                        "[Nmap] Failed to link %s %s → Service %s/%s: %s",
+                        node_type, ip, protocol, port_num, e,
+                    )
+            if rel_written:
+                count += 1
 
     return count
 

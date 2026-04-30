@@ -195,11 +195,12 @@ def test_ingest_nmap_services_ikev2_dual_ports(tmp_path):
     count = _ingest_nmap_services(mock_conn, str(nmap_file))
 
     assert count == 2
-    # execute calls follow the pattern: [Service MERGE, HAS_PORT MERGE, Service MERGE, HAS_PORT MERGE, ...]
-    # Indices 0 and 2 are the two Service MERGE calls; each carries the 'name' parameter.
+    # execute calls follow the pattern per port:
+    #   [Service MERGE (idx 0), Host HAS_PORT MERGE (idx 1), Router HAS_PORT MERGE (idx 2)]
+    # For two ports: Service MERGEs are at indices 0 and 3.
     names = [
         mock_conn.execute.call_args_list[i][1]["parameters"]["name"]
-        for i in (0, 2)
+        for i in (0, 3)
     ]
     assert all(n == "ikev2" for n in names)
 
