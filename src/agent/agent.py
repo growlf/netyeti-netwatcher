@@ -8,16 +8,16 @@ Runs as a daemon thread inside the FastAPI process and periodically:
   4. Collects Proxmox guest information
   5. Ingests everything into the Kuzu graph database
 """
+import ipaddress
 import logging
 import os
 import subprocess
 import time
-import ipaddress
 import xml.etree.ElementTree as ET
 
-import nmap_scanner
-import kuzu_loader
 import config
+import kuzu_loader
+import nmap_scanner
 
 logger = logging.getLogger(__name__)
 

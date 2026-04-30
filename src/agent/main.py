@@ -12,14 +12,14 @@ import os
 import socket
 import threading
 import xml.etree.ElementTree as ET
+from contextlib import asynccontextmanager
 from urllib.parse import urlparse
 
 import paramiko
 import routeros_api
 import uvicorn
 import yaml
-from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException, Request, Form
+from fastapi import FastAPI, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
@@ -64,7 +64,7 @@ def _read_creds(ip: str) -> dict:
     if not os.path.exists(creds_file):
         return None
     try:
-        with open(creds_file, "r") as f:
+        with open(creds_file) as f:
             return yaml.safe_load(f)
     except Exception:
         return None
@@ -211,7 +211,7 @@ async def dashboard(request: Request):
                 facts_path = os.path.join(config.FACTS_DIR, f"{ip}_facts.json")
                 if os.path.exists(facts_path):
                     try:
-                        with open(facts_path, "r") as f:
+                        with open(facts_path) as f:
                             facts_data = json.load(f)
                             if 'ansible_net_model' in facts_data:
                                 facts = {
@@ -293,7 +293,7 @@ async def config_page(request: Request):
     # Parse available ollamas
     nmap_xml = "/app/collected_facts/nmap_discovery.xml"
     detected_ollamas = []
-    
+
     if os.path.exists(nmap_xml):
         try:
             tree = ET.parse(nmap_xml)
@@ -305,7 +305,7 @@ async def config_page(request: Request):
                 for address in host.findall('address'):
                     if address.get('addrtype') == 'ipv4':
                         ip = address.get('addr')
-                
+
                 for port in host.findall('.//port'):
                     state = port.find('state')
                     if state is not None and port.get('portid') == '11434' and state.get('state') == 'open':
@@ -313,22 +313,22 @@ async def config_page(request: Request):
                         break
         except Exception:
             logging.exception("Failed to parse nmap discovery XML at %s", nmap_xml)
-            
+
     # Load current settings
     settings = {}
     settings_path = "/app/config/settings.json"
     if os.path.exists(settings_path):
         try:
-            with open(settings_path, "r") as f:
+            with open(settings_path) as f:
                 settings = json.load(f)
         except Exception:
             logging.exception("Failed to load settings JSON at %s", settings_path)
-            
+
     return templates.TemplateResponse(
         request=request,
-        name="config.html", 
+        name="config.html",
         context={
-            "request": request, 
+            "request": request,
             "detected_ollamas": detected_ollamas,
             "settings": settings
         }
@@ -340,18 +340,18 @@ async def save_llm_config(ollama_url: str = Form(""), ollama_model: str = Form("
     settings = {}
     if os.path.exists(settings_path):
         try:
-            with open(settings_path, "r") as f:
+            with open(settings_path) as f:
                 settings = json.load(f)
         except Exception as exc:
             logging.warning("Failed to load existing settings from %s: %s", settings_path, exc)
-            
+
     settings["ollama_url"] = ollama_url
     settings["ollama_model"] = ollama_model
-    
+
     os.makedirs("/app/config", exist_ok=True)
     with open(settings_path, "w") as f:
         json.dump(settings, f)
-        
+
     return HTMLResponse("<div class='text-green-500 font-bold mt-2 text-sm'>✓ LLM Settings saved successfully.</div>")
 
 def _validate_public_http_url(raw_url: str) -> str:
@@ -389,21 +389,21 @@ async def verify_llm_config(ollama_url: str = Form("")):
     import requests
     if not ollama_url:
         return HTMLResponse("<div class='text-red-500 text-sm mt-2'>URL is required.</div>")
-        
+
     try:
         url = _validate_public_http_url(ollama_url)
         resp = requests.get(f"{url}/api/tags", timeout=5)
         if resp.status_code == 200:
             data = resp.json()
             models = data.get("models", [])
-            
+
             if not models:
                 return HTMLResponse(
                     "<div class='text-amber-500 text-sm mb-2'>Connected, but no models found. You may need to pull a model first.</div>"
                     "<label class='block text-sm text-slate-400 mb-1'>Default Model Name</label>"
                     "<input type='text' name='ollama_model' class='w-full bg-slate-800 border border-slate-600 text-white rounded px-3 py-2'>"
                 )
-                
+
             options = "".join(
                 [
                     f"<option value='{html.escape(str(m.get('name', '')), quote=True)}'>{html.escape(str(m.get('name', '')), quote=True)}</option>"
@@ -661,7 +661,7 @@ async def services_dashboard(request: Request, ip: str):
     nmap_xml = "/app/collected_facts/nmap_discovery.xml"
     services = []
     safe_ip_for_log = ip.replace("\r", "").replace("\n", "")
-    
+
     if os.path.exists(nmap_xml):
         try:
             tree = ET.parse(nmap_xml)
@@ -670,7 +670,7 @@ async def services_dashboard(request: Request, ip: str):
                 for address in host.findall('address'):
                     if address.get('addrtype') == 'ipv4':
                         host_ip = address.get('addr')
-                
+
                 if host_ip == ip:
                     for port in host.findall('.//port'):
                         state = port.find('state')
@@ -697,9 +697,9 @@ async def services_dashboard(request: Request, ip: str):
 
     return templates.TemplateResponse(
         request=request,
-        name="services.html", 
+        name="services.html",
         context={
-            "request": request, 
+            "request": request,
             "ip": ip,
             "services": services
         }
