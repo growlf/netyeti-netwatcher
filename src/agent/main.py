@@ -371,9 +371,28 @@ def _validate_http_url(raw_url: str) -> str:
         raise ValueError("Hostname is not in the allowed LLM host list")
 
     try:
-        socket.getaddrinfo(parsed.hostname, parsed.port or (443 if parsed.scheme == "https" else 80))
+        addrinfo = socket.getaddrinfo(parsed.hostname, parsed.port or (443 if parsed.scheme == "https" else 80))
     except socket.gaierror:
         raise ValueError("Hostname could not be resolved")
+
+    resolved_ips = {item[4][0] for item in addrinfo if item and item[4]}
+    if not resolved_ips:
+        raise ValueError("Hostname could not be resolved")
+
+    for ip_text in resolved_ips:
+        try:
+            ip_obj = ipaddress.ip_address(ip_text)
+        except ValueError:
+            raise ValueError("Hostname resolved to an invalid IP address")
+        if (
+            ip_obj.is_private
+            or ip_obj.is_loopback
+            or ip_obj.is_link_local
+            or ip_obj.is_multicast
+            or ip_obj.is_reserved
+            or ip_obj.is_unspecified
+        ):
+            raise ValueError("Hostname resolves to a non-public IP address, which is not allowed")
 
     netloc = parsed.hostname
     if parsed.port:
