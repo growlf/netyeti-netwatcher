@@ -417,8 +417,9 @@ async def verify_llm_config(ollama_url: str = Form("")):
             )
         else:
             return HTMLResponse(f"<div class='text-red-500 text-sm mt-2'>Error: Received status code {resp.status_code}</div>")
-    except ValueError as e:
-        return HTMLResponse(f"<div class='text-red-500 text-sm mt-2'>Invalid URL: {html.escape(str(e))}</div>")
+    except ValueError:
+        logging.warning("Invalid LLM URL provided during verification", exc_info=True)
+        return HTMLResponse("<div class='text-red-500 text-sm mt-2'>Invalid URL. Please provide a valid public http(s) URL.</div>")
     except Exception:
         logging.exception("LLM config verification failed")
         return HTMLResponse("<div class='text-red-500 text-sm mt-2'>Connection failed. Please verify the URL and try again.</div>")
