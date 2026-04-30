@@ -312,7 +312,7 @@ async def config_page(request: Request):
                         detected_ollamas.append(ip)
                         break
         except Exception:
-            pass
+            logging.exception("Failed to parse nmap discovery XML at %s", nmap_xml)
             
     # Load current settings
     settings = {}
