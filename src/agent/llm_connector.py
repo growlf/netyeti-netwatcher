@@ -1,8 +1,11 @@
 import json
+import logging
 import os
 
 from llama_index.core import Settings
 from llama_index.llms.ollama import Ollama
+
+logger = logging.getLogger(__name__)
 
 
 def get_settings():
@@ -33,8 +36,8 @@ def get_llm():
         # Check if the endpoint responds to the OpenAI format
         if requests.get(f"{url}/v1/models", timeout=2).status_code == 200:
             is_openai = True
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug("OpenAI compatibility probe failed for %s: %s", url, e)
 
     if is_openai:
         from llama_index.llms.openai import OpenAI
