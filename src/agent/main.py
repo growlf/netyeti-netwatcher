@@ -322,7 +322,7 @@ async def config_page(request: Request):
             with open(settings_path, "r") as f:
                 settings = json.load(f)
         except Exception:
-            pass
+            logging.exception("Failed to load settings JSON at %s", settings_path)
             
     return templates.TemplateResponse(
         request=request,
