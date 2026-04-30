@@ -41,14 +41,15 @@ def execute_kuzu_query(cypher_query: str) -> str:
         # Create a connection (db is loaded automatically by Kuzu if it exists)
         db = kuzu.Database(DB_PATH)
         conn = kuzu.Connection(db)
-            
-        results = conn.execute(cypher_query)
-        
-        output = []
-        while results.has_next():
-            output.append(results.get_next())
-            
-        return json.dumps(output, default=str)
+        try:
+            results = conn.execute(cypher_query)
+            output = []
+            while results.has_next():
+                output.append(results.get_next())
+            return json.dumps(output, default=str)
+        finally:
+            conn.close()
+            db.close()
     except Exception as e:
         logger.error(f"Kuzu query failed: {e}")
         return json.dumps({"error": str(e)})
