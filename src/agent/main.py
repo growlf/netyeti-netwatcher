@@ -372,7 +372,12 @@ async def verify_llm_config(ollama_url: str = Form("")):
                     "<input type='text' name='ollama_model' class='w-full bg-slate-800 border border-slate-600 text-white rounded px-3 py-2'>"
                 )
                 
-            options = "".join([f"<option value='{m.get('name')}'>{m.get('name')}</option>" for m in models])
+            options = "".join(
+                [
+                    f"<option value='{html.escape(str(m.get('name', '')), quote=True)}'>{html.escape(str(m.get('name', '')), quote=True)}</option>"
+                    for m in models
+                ]
+            )
             return HTMLResponse(
                 f"<div class='text-green-500 text-sm font-bold mb-2'>✓ Connected successfully! Found {len(models)} models.</div>"
                 f"<label class='block text-sm text-slate-400 mb-1'>Default Model Name</label>"
