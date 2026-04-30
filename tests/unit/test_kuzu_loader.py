@@ -25,7 +25,7 @@ sys.modules["kuzu_db"] = kuzu_db_stub
 config_stub = types.ModuleType("config")
 config_stub.DB_PATH = "/tmp/test.kuzu"
 config_stub.FACTS_DIR = "/tmp/test_facts"
-sys.modules.setdefault("config", config_stub)
+sys.modules["config"] = config_stub
 
 from kuzu_loader import _sanitize_table, _VPN_PORT_MAP, _ingest_nmap_services  # noqa: E402
 

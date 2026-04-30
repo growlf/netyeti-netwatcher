@@ -41,11 +41,10 @@ llm_connector_stub = types.ModuleType("llm_connector")
 llm_connector_stub.get_llm = MagicMock(return_value=None)
 sys.modules["llm_connector"] = llm_connector_stub
 
-# Stub kuzu
-kuzu_stub = types.ModuleType("kuzu")
-kuzu_stub.Database = MagicMock()
-kuzu_stub.Connection = MagicMock()
-sys.modules.setdefault("kuzu", kuzu_stub)
+# Stub kuzu_db — kuzu_tool now delegates DB access through this module
+kuzu_db_stub = types.ModuleType("kuzu_db")
+kuzu_db_stub.get_connection = MagicMock()
+sys.modules["kuzu_db"] = kuzu_db_stub
 
 # Stub config
 config_stub = types.ModuleType("config")
@@ -97,13 +96,11 @@ def _make_result(rows):
 
 
 def test_execute_kuzu_query_returns_json():
-    mock_db = MagicMock()
     mock_conn = MagicMock()
     mock_result = _make_result([["host1", "192.168.1.1"]])
     mock_conn.execute.return_value = mock_result
 
-    with patch("kuzu_tool.kuzu.Database", return_value=mock_db), \
-         patch("kuzu_tool.kuzu.Connection", return_value=mock_conn):
+    with patch("kuzu_tool.kuzu_db.get_connection", return_value=mock_conn):
         result = kuzu_tool.execute_kuzu_query("MATCH (h:Host) RETURN h.hostname, h.ip")
     parsed = json.loads(result)
     assert isinstance(parsed, list)
@@ -119,12 +116,10 @@ def test_execute_kuzu_query_blocks_write_keywords():
 
 
 def test_execute_kuzu_query_returns_error_on_exception():
-    mock_db = MagicMock()
     mock_conn = MagicMock()
     mock_conn.execute.side_effect = RuntimeError("connection failed")
 
-    with patch("kuzu_tool.kuzu.Database", return_value=mock_db), \
-         patch("kuzu_tool.kuzu.Connection", return_value=mock_conn):
+    with patch("kuzu_tool.kuzu_db.get_connection", return_value=mock_conn):
         result = kuzu_tool.execute_kuzu_query("MATCH (h:Host) RETURN h")
     parsed = json.loads(result)
     assert "error" in parsed

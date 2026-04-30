@@ -213,7 +213,7 @@ def _ingest_nmap_services(conn: kuzu.Connection, filepath: str) -> int:
             # Prefer the known VPN protocol name over the generic nmap label
             svc_name = _VPN_PORT_MAP.get(port_num) or nmap_name
 
-            svc_id = f"svc_{ip.replace('.', '')}_{protocol}_{port_num}"
+            svc_id = f"svc_{ip.replace('.', '_')}_{protocol}_{port_num}"
 
             svc_query = """
             MERGE (s:Service {id: $id})
