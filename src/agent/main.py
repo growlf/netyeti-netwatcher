@@ -342,8 +342,8 @@ async def save_llm_config(ollama_url: str = Form(""), ollama_model: str = Form("
         try:
             with open(settings_path, "r") as f:
                 settings = json.load(f)
-        except Exception:
-            pass
+        except Exception as exc:
+            logging.warning("Failed to load existing settings from %s: %s", settings_path, exc)
             
     settings["ollama_url"] = ollama_url
     settings["ollama_model"] = ollama_model
