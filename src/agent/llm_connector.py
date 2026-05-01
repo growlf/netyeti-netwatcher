@@ -5,11 +5,13 @@ import os
 from llama_index.core import Settings
 from llama_index.llms.ollama import Ollama
 
+import config
+
 logger = logging.getLogger(__name__)
 
 
 def get_settings():
-    settings_path = "/app/config/settings.json"
+    settings_path = os.path.join(config.CONFIG_DIR, "settings.json")
     if os.path.exists(settings_path):
         try:
             with open(settings_path) as f:
