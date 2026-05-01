@@ -84,7 +84,7 @@ def load_few_shots() -> str:
             
     examples_str = ""
     for ex in defaults:
-        examples_str += f"Question: {ex['nl']}\\nCypher: {ex['cypher']}\\n\\n"
+        examples_str += f"Question: {ex['nl']}\nCypher: {ex['cypher']}\n\n"
         
     return examples_str
 

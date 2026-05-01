@@ -23,7 +23,7 @@ def get_local_subnet() -> str | None:
     Returns ``None`` when the subnet cannot be determined.
     """
     try:
-        route_out = subprocess.check_output("ip route | grep default", shell=True, text=True)
+        route_out = subprocess.check_output("ip route | grep default", shell=True, text=True, timeout=10)
         if not route_out:
             return None
         parts = route_out.strip().split()
@@ -37,7 +37,7 @@ def get_local_subnet() -> str | None:
             with open(os.path.join(config.FACTS_DIR, "gateway.txt"), "w") as f:
                 f.write(gateway_ip)
 
-        addr_out = subprocess.check_output(f"ip -o -f inet addr show {iface}", shell=True, text=True)
+        addr_out = subprocess.check_output(f"ip -o -f inet addr show {iface}", shell=True, text=True, timeout=10)
         cidr = addr_out.strip().split()[3]
 
         # Normalize to network address (e.g. 192.168.1.10/24 → 192.168.1.0/24)
@@ -66,7 +66,7 @@ def run_traceroute() -> list:
     logger.info("[Nmap] Running traceroute to %s to discover upstream networks...", target)
 
     cmd = ["traceroute", "-n", "-m", "10", "-w", "2", "-q", "1", target]
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
 
     hops = []
     subnets = []
@@ -144,7 +144,7 @@ def run_scan() -> None:
     output_file = os.path.join(config.FACTS_DIR, "nmap_discovery.xml")
 
     cmd = ["nmap", "-p", tcp_ports] + all_subnets + ["-oX", output_file]
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
 
     if result.returncode == 0:
         logger.info("[Nmap] Discovery complete. Results saved to %s", output_file)
@@ -168,7 +168,7 @@ def run_scan() -> None:
             all_subnets,
         )
         cmd_udp = ["nmap", "-sU", "-p", udp_ports] + all_subnets + ["-oX", udp_output_file]
-        result_udp = subprocess.run(cmd_udp, capture_output=True, text=True)
+        result_udp = subprocess.run(cmd_udp, capture_output=True, text=True, timeout=600)
         if result_udp.returncode == 0:
             logger.info("[Nmap] UDP VPN scan complete. Results saved to %s", udp_output_file)
         else:

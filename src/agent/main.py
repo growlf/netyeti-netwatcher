@@ -292,7 +292,7 @@ async def dashboard(request: Request):
 @app.get("/config", response_class=HTMLResponse)
 async def config_page(request: Request):
     # Parse available ollamas
-    nmap_xml = "/app/collected_facts/nmap_discovery.xml"
+    nmap_xml = os.path.join(config.FACTS_DIR, "nmap_discovery.xml")
     detected_ollamas = []
 
     if os.path.exists(nmap_xml):
@@ -317,7 +317,7 @@ async def config_page(request: Request):
 
     # Load current settings
     settings = {}
-    settings_path = "/app/config/settings.json"
+    settings_path = os.path.join(config.CONFIG_DIR, "settings.json")
     if os.path.exists(settings_path):
         try:
             with open(settings_path) as f:
@@ -337,7 +337,7 @@ async def config_page(request: Request):
 
 @app.post("/api/config/llm", response_class=HTMLResponse)
 async def save_llm_config(ollama_url: str = Form(""), ollama_model: str = Form("")):
-    settings_path = "/app/config/settings.json"
+    settings_path = os.path.join(config.CONFIG_DIR, "settings.json")
     settings = {}
     if os.path.exists(settings_path):
         try:
@@ -349,7 +349,7 @@ async def save_llm_config(ollama_url: str = Form(""), ollama_model: str = Form("
     settings["ollama_url"] = ollama_url
     settings["ollama_model"] = ollama_model
 
-    os.makedirs("/app/config", exist_ok=True)
+    os.makedirs(config.CONFIG_DIR, exist_ok=True)
     with open(settings_path, "w") as f:
         json.dump(settings, f)
 
@@ -445,6 +445,7 @@ async def test_ssh(
     key_file: str = Form(""),
 ):
     ip = _validate_ip(ip)  # returns canonical form; use only this for paths
+    ssh = None
     try:
         ssh = paramiko.SSHClient()
         # NOTE: AutoAddPolicy silently accepts the remote host's key without
@@ -487,7 +488,6 @@ async def test_ssh(
                 "ansible_connection: ansible.netcommon.network_cli\n",
             )
 
-        ssh.close()
         return HTMLResponse(
             f"<div class='text-green-500 font-bold mt-2 text-sm'>✓ Success! Credentials saved for {html.escape(ip)}.</div>"
         )
@@ -498,6 +498,9 @@ async def test_ssh(
         return HTMLResponse(
             "<div class='text-red-500 font-bold mt-2 text-sm'>✗ Connection failed. Check the agent logs for details.</div>"
         )
+    finally:
+        if ssh:
+            ssh.close()
 
 
 @app.get("/proxmox/{ip}", response_class=HTMLResponse)
@@ -612,6 +615,7 @@ async def device_dashboard(request: Request, ip: str):
 
     # Fallback to SSH (Paramiko) if API failed or returned empty (common for v7)
     if error or not interfaces:
+        ssh = None
         try:
             ssh = paramiko.SSHClient()
             # NOTE: Same AutoAddPolicy caveat as in test_ssh above.
@@ -648,10 +652,12 @@ async def device_dashboard(request: Request, ip: str):
             _, stdout, _ = ssh.exec_command("/ip dns cache print detail")
             dns_cache = parse_routeros_print(stdout.read().decode())
 
-            ssh.close()
         except Exception as ssh_e:
             if not interfaces:
                 error = f"API Error: {error} | SSH Error: {ssh_e}"
+        finally:
+            if ssh:
+                ssh.close()
 
     return templates.TemplateResponse(
         request=request,
@@ -670,7 +676,7 @@ async def device_dashboard(request: Request, ip: str):
 @app.get("/services/{ip}", response_class=HTMLResponse)
 async def services_dashboard(request: Request, ip: str):
     # Parse available services for this ip from Nmap
-    nmap_xml = "/app/collected_facts/nmap_discovery.xml"
+    nmap_xml = os.path.join(config.FACTS_DIR, "nmap_discovery.xml")
     services = []
     safe_ip_for_log = ip.replace("\r", "").replace("\n", "")
 
