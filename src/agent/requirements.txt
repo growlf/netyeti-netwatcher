@@ -5,7 +5,7 @@
 kuzu==0.8.2
 llama-index==0.14.21
 llama-index-llms-ollama==0.10.1
-chromadb==0.5.23
+chromadb==1.5.8
 ansible==10.7.0
 fastapi==0.136.1
 uvicorn[standard]==0.32.1
