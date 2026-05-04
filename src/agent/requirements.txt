@@ -2,7 +2,7 @@
 # Keep this file in sync when updating dependencies.
 # Dev-only packages (pytest, ruff, etc.) belong in /requirements-dev.txt.
 
-kuzu==0.8.2
+kuzu==0.11.3
 llama-index==0.14.21
 llama-index-llms-ollama==0.10.1
 chromadb==0.5.23
