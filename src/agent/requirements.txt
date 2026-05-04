@@ -15,4 +15,4 @@ routeros-api==0.17.0
 python-multipart==0.0.22
 proxmoxer==2.3.0
 requests==2.33.1
-PyYAML>=6.0
+PyYAML>=6.0.3
