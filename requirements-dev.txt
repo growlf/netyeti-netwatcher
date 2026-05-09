@@ -1,7 +1,7 @@
 # NetWatch AI — development and testing dependencies
 # Install with: pip install -r src/agent/requirements.txt -r requirements-dev.txt
 
-pytest==8.3.3
+pytest==9.0.3
 pytest-cov==6.0.0
 httpx==0.28.1
 ruff==0.8.4
